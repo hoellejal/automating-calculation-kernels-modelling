@@ -1,0 +1,82 @@
+# -*- mode: org -*-
+# -*- coding: utf-8 -*-
+#+STARTUP: overview indent inlineimages logdrawer
+#+TITLE:       Journal
+#+AUTHOR:      Hoël Jalmin
+#+LANGUAGE:    en
+#+SEQ_TODO: TODO(t!) STARTED(s!) DONE(d!)
+
+* Introduction
+This file is the report for my internship, about automating
+calculation kernels' modellings. I'll explain more about this later on.
+
+* 2019
+** 2019-04 avril
+*** 2019-04-30 mardi
+**** Installed Emacs and Org-mode and all required dependencies.
+Followed the given MOOC to understand how Org-mode functions, and how
+to take efficient notes. Learned the basics of org-mode, and of the
+keyboard shortcuts introduced by the provided emacs initialization.
+**** STARTED Read [[./HPL.pdf][Faithful and Efficient Simulation of High Performance Linpack]]
+***** Introduction
+With a power consumption of several MW per hour on a TOP500 machine,
+running applications on supercomputers at scale solely to optimize
+their performance is extremely expensive. Likewise, High-Performance
+Linpack (HPL), the benchmark used to ran supercomputers in the TOP500,
+requires a careful tuning of many parameters (problem size, grid
+arrangement, granularity, collective operation algorithms, etc.) and
+supports exploration of the most common and fundamental performance
+issues and their solutions. In this article, we explain how we both
+extended the SimGrid's SMPI simulator and slightly modified the
+open source version of HPL to allow a fast emulation on a single
+commodity server at the scale of a supercomputer. We explain how to
+model the different components (network, BLAS, ...) and show that a
+careful modeling of both spatial and temporal node variability allows us
+to obtain predictions within a few percents of real experiments.
+
+***** Notes 
+The paper explains they extended the Simgrid simulator to simulate the
+HPL benchmark. The idea was to get an estimated performance of HPL, as
+it is quite representative of usual performance issues, but without
+actually running it. The simulation reduces considerably memory
+consumption compared to a normal run of HPL, so it can be ran on a
+smaller cluster with less time. Other simulation models for HPL
+already existed, but were quite inaccurate as they did not take all
+the parameters in account.
+
+****** About HPL
+HPL is a parallel implementation of a benchmark which measures how
+fast a computer can solve a system of linear equations. HPL uses the
+BLAS libraries to make matrix operations such as multiplication (using
+dgemm). The sequential complexity is well known depending on the
+matrix size: \[ \frac{2}{3} \] N³ + 2N² + O(N). However the duration
+of the calculation cannot be determined without running HPL or a
+simulation of it as it depends on network capacity and a lot of
+parameters. Even while running HPL there's a difference between the
+theoretical peak performance and the actual one reached depending on
+how MPI communications are done.
+
+
+****** About SimGrid and MPI simulation
+There are two approaches to MPI simulation: offline and online. The
+first one gives a trace of the application obtained on a run to a
+simulator which makes predictions depending on the performance
+models. The issue is that a first run is necessary to get the trace in
+the first place, and the trace is only valid at this moment, since it
+depicts a precise behavior. Thus, predictions are extrapolated which
+can be an issue if the execution is non deterministic. This type of
+simulation is not proper for HPL, whereas online simulation (used by
+SimGrid) means the simulator directs the execution; it decides which
+process to run at which time.
+
+SimGrid provides accurate performance models for application with
+heavy network use, as it considers network topology and
+heterogeneity. SMPI, based on SimGrid, runs MPI ranks on mutually
+exclusive threads, so whenever a thread enters an MPI call, SMPI moves
+its clock ahead of the time spent computing since the last MPI
+call.
+
+
+****** TODO About how to emulate HPL
+
+****** TODO About the chosen models for kernels and communications
