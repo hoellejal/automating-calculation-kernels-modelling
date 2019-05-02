@@ -17,7 +17,10 @@ calculation kernels' modellings. I'll explain more about this later on.
 Followed the given MOOC to understand how Org-mode functions, and how
 to take efficient notes. Learned the basics of org-mode, and of the
 keyboard shortcuts introduced by the provided emacs initialization.
-**** STARTED Read [[./HPL.pdf][Faithful and Efficient Simulation of High Performance Linpack]]
+**** DONE Read [[https://hal.inria.fr/hal-02096571/document ][Faithful and Efficient Simulation of High Performance Linpack]]
+:LOGBOOK:  
+- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:53]
+:END:      
 ***** Introduction
 With a power consumption of several MW per hour on a TOP500 machine,
 running applications on supercomputers at scale solely to optimize
@@ -35,48 +38,205 @@ careful modeling of both spatial and temporal node variability allows us
 to obtain predictions within a few percents of real experiments.
 
 ***** Notes 
-The paper explains they extended the Simgrid simulator to simulate the
-HPL benchmark. The idea was to get an estimated performance of HPL, as
-it is quite representative of usual performance issues, but without
-actually running it. The simulation reduces considerably memory
-consumption compared to a normal run of HPL, so it can be ran on a
-smaller cluster with less time. Other simulation models for HPL
-already existed, but were quite inaccurate as they did not take all
-the parameters in account.
+The paper explains how to extend the Simgrid simulator to simulate the
+HPL benchmark and get the rough performance of it, as it is quite
+representative of usual performance issues, without actually running
+it. The simulation reduces considerably memory consumption compared to
+a normal run of HPL, so it can be ran on a smaller cluster with less
+time. Other simulation models for HPL already existed, but were quite
+inaccurate as they did not take all the parameters in account.
 
 ****** About HPL
 HPL is a parallel implementation of a benchmark which measures how
 fast a computer can solve a system of linear equations. HPL uses the
 BLAS libraries to make matrix operations such as multiplication (using
-dgemm). The sequential complexity is well known depending on the
-matrix size: \[ \frac{2}{3} \] N³ + 2N² + O(N). However the duration
-of the calculation cannot be determined without running HPL or a
-simulation of it as it depends on network capacity and a lot of
-parameters. Even while running HPL there's a difference between the
-theoretical peak performance and the actual one reached depending on
-how MPI communications are done.
+dgemm). The sequential complexity depends on the matrix size: 
+2/3N³ + 2N² + O(N), but the calculation time cannot be determined
+without running HPL or a simulation of it (it depends on network
+capacity and a lot of parameters). Even while running HPL there's a
+difference between the theoretical peak performance and the actual one
+reached depending on how MPI communications are done.
 
 
 ****** About SimGrid and MPI simulation
 There are two approaches to MPI simulation: offline and online. The
-first one gives a trace of the application obtained on a run to a
-simulator which makes predictions depending on the performance
-models. The issue is that a first run is necessary to get the trace in
-the first place, and the trace is only valid at this moment, since it
-depicts a precise behavior. Thus, predictions are extrapolated which
-can be an issue if the execution is non deterministic. This type of
-simulation is not proper for HPL, whereas online simulation (used by
-SimGrid) means the simulator directs the execution; it decides which
-process to run at which time.
-
-SimGrid provides accurate performance models for application with
-heavy network use, as it considers network topology and
-heterogeneity. SMPI, based on SimGrid, runs MPI ranks on mutually
+first one gives a previously obtained trace of the application to a
+simulator, which makes predictions depending on the performance
+models. The issue is that a first run is necessary to get the trace,
+which is only valid at the moment of the run, since it depicts a
+precise behavior. Thus, predictions are extrapolated which can be an
+issue if the execution is non deterministic. This simulation type is
+not proper for HPL, whereas online simulation (used by SimGrid) means
+the simulator directs the execution; it decides which process to run
+at which time. SimGrid provides accurate performance models for
+application with heavy network use, as it considers network topology
+and heterogeneity. SMPI, based on SimGrid, runs MPI ranks on mutually
 exclusive threads, so whenever a thread enters an MPI call, SMPI moves
-its clock ahead of the time spent computing since the last MPI
-call.
+its clock ahead of the time spent computing since the last MPI call.
 
 
-****** TODO About how to emulate HPL
+****** DONE About how to emulate HPL
+:LOGBOOK:  
+- State "DONE"       from "STARTED"    [2019-05-02 jeu. 10:51]
+- State "STARTED"    from "TODO"       [2019-05-02 jeu. 09:39]
+:END:      
+Most of the calculation time of HPL is spent in the dgemm and dtrsm
+(A.x = b equations) kernels, so replacing these two by models greatly
+reduces simulation time: it was only be necessary to make a SMPI call
+when one of these kernels were used (this makes results incorrect). 
+Likewise, other functions were replaced since they used incorrect data
+because of dgemm and dstrsm. Initialization of pseudo-random matrices
+and correctness verification were also skipped, changing the idamax
+function to return random values, making the simulation deterministic.
 
-****** TODO About the chosen models for kernels and communications
+Memory consumption was scaled down by sharing the input matrix A
+between all MPI processes and indicating that its data can be
+overwritten. For the panel matrix, containing matrix indexes, data
+corruption cannot be risked so a partial shared malloc was introduced,
+to only share the range of values that doesn't have matrix indexes. 
+The number of allocations and page faults was also greatly reduced by
+reusing the allocated panels instead of getting more of them. Also, a
+lot of calls to memcopy were avoided by making SMPI aware of which
+memory areas were private or not. Calls to mmap (used to remap the
+data segment to the private copy of the MPI rank when context
+switching) were also avoided by loading several times the data segment
+into memory. Finally, huge pages were used so the page table wouldn't
+be too large.
+
+All of these changes allowed a reduced complexity by removing the
+O(N³) part.
+
+
+****** DONE About the chosen models for kernels and communications
+:LOGBOOK:  
+- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:05]
+- State "STARTED"    from "TODO"       [2019-05-02 jeu. 10:51]
+:END:      
+Several modeling notations were chosen. M-0 means the duration is
+roughly constant and independant of the input parameters. M-1 means
+the performance depends on a combination of the parameters. M-2
+is used when a polynomial model is required (for complex behavior). 
+M_H means the platform has spatial variability and modeling should
+be done for each host, and M' is used when the duration is linear for
+specific parameters values. The same was done for the noise: N-0 means
+no noise, N-1 means the noise has a normal distribution, N-2 means the
+noise has to be modelised by a polynomial function. N_H means noise
+estimations are made per-host and N' is when the noise is modelised by
+several normal distributions.
+
+Communications between MPI nodes are mostly linear in message size but
+vary depending on the protocol used. The chosen model was a M'-1
+(linear within each host but discontinuous) N'-1 (complex distribution
+of linear noise) model, with its paramaters estimated by pytree: the
+message size range and the 2-4 modes of the normal distribution mixture.
+
+For dgemm, a polynomial model (M_H-2) was required because of the spatial
+variability: depending on the value of M*N*K (so on the matrix size),
+some durations will be higher than others regardless of the node used
+(which means dgemm doesn't have a linear behavior). There is also some
+temporal variability, modelized here by a random call. For other BLAS
+and HPL kernels, a linear model M-1 is close enough to reality; but the
+noise needs to follow a N-2 model because the variability it provides
+increases with the value of the parameters (which indicates a
+polynomial model).
+
+
+****** DONE The simulation at scale
+:LOGBOOK:  
+- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:53]
+- State "STARTED"    from "TODO"       [2019-05-02 jeu. 16:20]
+:END:      
+After working on these optimizations, an emulation was done at scale
+using the Dahu cluster, with a high number of iterations, complex
+communication patterns and more MPI processes than usual. The
+emulation was stopped after five iterations, to compare to real runs:
+the communication durations were a bit too optimistic, and it was
+noted that using a complex model makes more realistic traces. Several
+simulations were then done to figure out which model would be more
+accurate, and the models that are the closest to reality are: M-1 N-2
+for the kernels, M_H-2 N_H-2 for dgemm and M'-1 N-0 for the network. 
+Adding a linear noise for the network doesn't have any visible effect.
+
+This was compared to the run made on the Stampede cluster. Considering
+the input parameters for this run and the result, an optimistic model
+(M'-1 N-0) was chosen for the dgemm and dtrsm functions, as well as
+for the MPI communications, while ignoring the other functions. 
+Although usually the simulations are within of few percent of reality,
+the performance of this one was much lower than the performance of the
+Stamepde run, which used a modified version of HPL and different
+parameters than the ones printed by HPL. It was also found that the
+communications had been optimized for the run, which explains the
+difference between the simulation and the reality.
+
+
+** 2019-05 mai
+*** 2019-05-02 jeudi
+**** Attended the keynote speech about contrasting artifical and human intelligence by Jean-Louis Dessales
+***** Introduction
+Some artificial intelligence techniques were recently able to scale
+up, provoking what many consider as a technical revolution. However,
+the type of AI that proved so successful in the past decade relies on
+the exploitation of massive data, and is limited to narrow domains of
+expertise. By contrast, human intelligence is very efficient at making
+broad inferences from limited evidence. I will highlight a few
+qualitative differences between artificial intelligence and human
+intelligence. These differences are mainly due to a small set of
+cognitive operations, such as contrast or simplicity detection, that
+human beings perform on the fly. I will also suggest that attempting
+to bridge the gap between these two forms of intelligence might be the
+best way to improve artificial systems in the future.
+
+***** Notes
+- It is often said that artificial intelligence will eventually replace
+ mankind, but Jean-Louis Dessales clearly doesn't think so. It is
+ foolish for him to believe there is a loss function that can be
+ applied for everything.
+
+- There are specific characteristics of artifical intelligence that
+  makes them too different from human beings to be able to solve every
+  problem humans are able to.
+ 
+  + For instance, neuronal networks work best when they can analyse a
+    lot of data, to then be able to recognize it. This can work for
+    fields such as image recognition, but not for particular fields
+    such as criminal investigation where every case is different and
+    the possible similarity between cases is only an average and
+    cannot be exact. Also artificial intelligence work without biases,
+    unlike human beings.
+
+  + Artificial intelligence function in an isotropic way, they can
+    learn how to recognize language even if the order of the words in
+    the sentences is mixed up; whereas this will just confuse human
+    beings. However, even though artificial intelligences recognize
+    language they do not understand it, and if they try to speak they
+    often make no sense because they look at semantics similarity and
+    not semantics itself. Any idoms are lost to them, because they
+    will not recognize it.
+
+  + Neuronal networks are also unable to recognize a pattern if they
+    were not introduced to it, and have very narrow expertise. For
+    example, if given a sequence of numbers, they will be unable to
+    find the next ones (ex: 1223334444). As they work with recognition
+    instead of understanding, trying to broaden their expertise will
+    sometimes fail. For example a neuronal network made to recognize
+    skin cancer cannot recognize psoriasis, and trying to change it
+    will reduce their ability to see skin cancer.
+
+- When attempting to solve problems, human beings look for simplicity:
+  the least complexity is the best. How humans see complexity and
+  unexpectedness is by a difference between what they expect and what
+  they see.
+
+  + Unexpectedness can be defined as a complexity drop between what was
+    expected and what happened. For example, seeing a "simple" (well
+    known) person in a "complex" (rarely visited) place is unexpected,
+    because of the difference in complexity.
+
+- Because of the way humans learn by making connections (for example
+  when learning a new word the context is immediately connected with
+  it; if a child hears their parent talk about "chopping the fish"
+  they are able to connect it to the place they heard it, to the food
+  associated with it...), artificial intelligence cannot replace
+  humans in the sense that this process of learning is completely
+  foreign to them. They do not process the relations between objects,
+  they focus on pattern recognition.
