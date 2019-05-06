@@ -4,22 +4,18 @@
 #+TITLE:       Journal
 #+AUTHOR:      Hoël Jalmin
 #+LANGUAGE:    en
-#+SEQ_TODO: TODO(t!) STARTED(s!) DONE(d!)
+#+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!)
 
 * Introduction
 This file is the report for my internship, about automating
 calculation kernels' modellings. I'll explain more about this later on.
 
 * 2019
-** 2019-04 avril
-*** 2019-04-30 mardi
-**** Installed Emacs and Org-mode and all required dependencies.
-Followed the given MOOC to understand how Org-mode functions, and how
-to take efficient notes. Learned the basics of org-mode, and of the
-keyboard shortcuts introduced by the provided emacs initialization.
-**** DONE Read [[https://hal.inria.fr/hal-02096571/document ][Faithful and Efficient Simulation of High Performance Linpack]]
+** 2019-04 april
+*** 2019-04-30 monday
+**** DONE Read [[https://hal.inria.fr/hal-02096571/document ][Faithful and Efficient Simulation of High Performance Linpack]] :PAPER:
 :LOGBOOK:  
-- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:53]
+- State "DONE"       from "STARTED"    [2019-05-02 thursday 16:53]
 :END:      
 ***** Introduction
 With a power consumption of several MW per hour on a TOP500 machine,
@@ -77,8 +73,8 @@ its clock ahead of the time spent computing since the last MPI call.
 
 ****** DONE About how to emulate HPL
 :LOGBOOK:  
-- State "DONE"       from "STARTED"    [2019-05-02 jeu. 10:51]
-- State "STARTED"    from "TODO"       [2019-05-02 jeu. 09:39]
+- State "DONE"       from "STARTED"    [2019-05-02 thursday 10:51]
+- State "STARTED"    from "TODO"       [2019-05-02 thursday 09:39]
 :END:      
 Most of the calculation time of HPL is spent in the dgemm and dtrsm
 (A.x = b equations) kernels, so replacing these two by models greatly
@@ -109,8 +105,8 @@ O(N³) part.
 
 ****** DONE About the chosen models for kernels and communications
 :LOGBOOK:  
-- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:05]
-- State "STARTED"    from "TODO"       [2019-05-02 jeu. 10:51]
+- State "DONE"       from "STARTED"    [2019-05-02 thursday 16:05]
+- State "STARTED"    from "TODO"       [2019-05-02 thursday 10:51]
 :END:      
 Several modeling notations were chosen. M-0 means the duration is
 roughly constant and independant of the input parameters. M-1 means
@@ -143,8 +139,8 @@ polynomial model).
 
 ****** DONE The simulation at scale
 :LOGBOOK:  
-- State "DONE"       from "STARTED"    [2019-05-02 jeu. 16:53]
-- State "STARTED"    from "TODO"       [2019-05-02 jeu. 16:20]
+- State "DONE"       from "STARTED"    [2019-05-02 thursday 16:53]
+- State "STARTED"    from "TODO"       [2019-05-02 thursday 16:20]
 :END:      
 After working on these optimizations, an emulation was done at scale
 using the Dahu cluster, with a high number of iterations, complex
@@ -168,10 +164,16 @@ parameters than the ones printed by HPL. It was also found that the
 communications had been optimized for the run, which explains the
 difference between the simulation and the reality.
 
+*** 2019-04-30 tuesday
+**** Installed Emacs and Org-mode and all required dependencies.
+Followed the given MOOC to understand how Org-mode functions, and how
+to take efficient notes. Learned the basics of org-mode, and of the
+keyboard shortcuts introduced by the provided emacs initialization.
 
-** 2019-05 mai
-*** 2019-05-02 jeudi
-**** Attended the keynote speech about contrasting artifical and human intelligence by Jean-Louis Dessales
+**** Began writing the journal
+** 2019-05 may
+*** 2019-05-02 thursday
+**** Attended the keynote speech about contrasting artifical and human intelligence by Jean-Louis Dessales :SEMINAR:
 ***** Introduction
 Some artificial intelligence techniques were recently able to scale
 up, provoking what many consider as a technical revolution. However,
@@ -240,3 +242,172 @@ best way to improve artificial systems in the future.
   humans in the sense that this process of learning is completely
   foreign to them. They do not process the relations between objects,
   they focus on pattern recognition.
+*** 2019-05-03 friday
+**** INTERRUPTED Read [[http://xcelab.net/rm/statistical-rethinking ][A Bayesian Course with examples in R and Stan]] by Richard McElreath :PAPER:STAN:
+:LOGBOOK:  
+- State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
+:END:      
+***** About models
+- Models are like golems, powerful but easy to misuse.
+- Use of models is wide spread and necessary but giving too many
+  models is confusing, you need to find the right one. statistical
+  tools are not diverse enough.
+- Falsifying null hypothesis isn't enough. it would be more logical to
+  falsify an explanatory model because falsifying a null model bring
+  very little knowledge.
+- Hypotheses correspond to several process models, and statistical
+  models correspond to several process models
+- Bayesian statistics are able to process small samples and don't need
+  a prior hypothesis to confirm or reject. In bayesian statistics,
+  probabilities are interpreted as uncertainty, models' parameters are
+  modelled by probability laws and parameters are
+  approximated by execution.
+- On a des observations/déductions prior, qui nous aident à aiguiller
+  l'analyse
+
+***** About priors, likelihood and posteriors
+- Small worlds are the logical worlds of the models. There are no
+  surprises, and it's possible to verify the models's logic and if it
+  works properly. Whereas in large worlds there might be unpredicted
+  events, and the models never completely encompass large worlds.
+- Bayesian analysis are garden of forking data: multiple paths exist,
+  with each one branching more possibilities as we explore the
+  paths. By getting more observations, we prune some path so to keep
+  only the ones consistant to our data.
+- Prior information can help us find the plausability of each path.
+- The plausability of x knowing y is proportional to the number of
+  ways x can produce y * the prior plausability of x.
+- Models are built on the way, updated each time we get data that
+  confirms or denies it's prior assumptions. They learn with each set
+  of plausabilities.
+- A model is a mix of a likelihood, which represents the plausability
+  of the data given a fixed value as parameter, several parameters and
+  a prior (the plausability of each value of the parameters).
+- Bayes theorem: P(A∩B) = P(A|B)Pr(B) = P(B|A)Pr(A) 
+  aka Posterior = Likelihood*Prior / Average Likelihood
+  Pr(A|B) = Pr(B|A)*Pr(A)/(Pr(B|A)*Pr(A))+(Pr(B|A¯)*Pr(A¯))
+- Grid approximation uses a finite grid of parameters values and
+  scales poorly. When we have several parameters, we use a quadratic
+  approximation (to describe the normal shape of the posterior).
+
+**** INTERRUPTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
+:LOGBOOK:  
+- State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
+:END:      
+These lectures are available on his youtube channel, and explain in
+more detail what his book is about. Skipped to the Markov Chain Monte
+Carlo part.
+
+*** 2019-05-06 monday
+**** Continued to read the book, notes in last friday's section
+**** Talked to Tom about a simple Stan example and notebooks
+**** Started to use Stan with simple cases, following Tom's example :STAN:R:
+
+We start by generating some data following a relatively straight line,
+with some noise.
+
+#+begin_src R :results output :session *R* :exports both
+generate_dataset=function(intercept, coefficient, N, min_x=0, max_x=100, sigma=1){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = coefficient * x + intercept + rnorm(N,sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+df=generate_dataset(50, -2, 500, sigma=15)
+head(df)
+#+end_src
+
+#+RESULTS:
+:  
+:    x          y
+: 1 57  -48.30702
+: 2 52  -43.57117
+: 3 40  -31.34614
+: 4 86 -118.25581
+: 5 85 -104.06467
+: 6 34  -17.04022
+
+#+begin_src R :results output graphics :file ./images/figure.png :exports both :width 600 :height 400 :session *R* 
+library(ggplot2)
+ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3)
+#+end_src
+
+#+RESULTS:
+[[file:./images/figure.png]]
+
+Then, we define a stan model.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+
+modelString = "data { // the observations
+    int<lower=1> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real coefficient;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+} 
+model {
+    // We define our priors
+    intercept   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
+    coefficient ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+
+    // Then, our likelihood function
+    y ~ normal(coefficient*x + intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Inference for Stan model: ea4b5a288cf5f1d87215860103a9026e.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                mean se_mean   sd     2.5%      25%      50%      75%    97.5%
+intercept      48.28    0.04 1.31    45.72    47.40    48.29    49.15    50.97
+coefficient    -1.97    0.00 0.02    -2.01    -1.98    -1.97    -1.95    -1.92
+sigma          14.48    0.01 0.46    13.63    14.16    14.46    14.79    15.41
+lp__        -1596.29    0.04 1.23 -1599.49 -1596.88 -1595.98 -1595.37 -1594.87
+            n_eff Rhat
+intercept     969 1.00
+coefficient  1054 1.00
+sigma        1029 1.01
+lp__          800 1.00
+
+Samples were drawn using NUTS(diag_e) at Mon May  6 19:07:45 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/stan_plot.png :exports both :width 600 :height 400 :session *R* 
+plot(fit)
+#+end_src
+
+#+RESULTS:
+[[file:./images/stan_plot.png]]
+
+#+begin_src R :results output graphics :file ./images/stan_trace.png :exports both :width 600 :height 400 :session *R* 
+traceplot(fit)
+#+end_src
+
+#+RESULTS:
+[[file:./images/stan_trace.png]]
+
+
