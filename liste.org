@@ -1,11 +1,5 @@
 * Tasks
-** TODO Solve the strange plot issue, ask Arnaud if necessary
-   When making a plot of a stan sampling, the result is surprising and
-   unwelcome, we'd like to see a gaussian plot
-
-** TODO Try with more difficult models: with noise depending on x, with a polynomial coefficient, with heterogeneity...
-   - For now we have y = coefficient * x + intercept +
-     rnorm(N,sd=sigma). For the first, the noise model has to be changed
+** TODO Try with more difficult models:  with a polynomial coefficient, with heterogeneity...
    - For the second, it'd be better to have a model much like dgemm
      where y depends on a combinaison of M*N*K and M*N, M*K, N*K
    - For the third, we need to have several coefficients and intercepts
