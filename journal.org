@@ -243,8 +243,9 @@ best way to improve artificial systems in the future.
   foreign to them. They do not process the relations between objects,
   they focus on pattern recognition.
 *** 2019-05-03 friday
-**** INTERRUPTED Read [[http://xcelab.net/rm/statistical-rethinking ][A Bayesian Course with examples in R and Stan]] by Richard McElreath :PAPER:STAN:
+**** STARTED Read [[http://xcelab.net/rm/statistical-rethinking ][A Bayesian Course with examples in R and Stan]] by Richard McElreath :PAPER:STAN:
 :LOGBOOK:  
+- State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 16:42]
 - State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
 :END:      
 ***** About models
@@ -290,13 +291,29 @@ best way to improve artificial systems in the future.
   scales poorly. When we have several parameters, we use a quadratic
   approximation (to describe the normal shape of the posterior).
 
-**** INTERRUPTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
+***** About samples
+- The false positive test: It's a counterintuitive result to a simple
+  test. Knowing the amount of people afflicted in the general
+  population, the probability for the test to correctly detect the
+  illness, and the probability for it to have a false positive result,
+  what is the probability, given that the test is positive, that the
+  test subject has the illness? It's often lower than expected.
+- Working on samples of parameters' values is easier and more
+  intuitive, especially when models become complicated.
+- Sampling is useful to summarize and understand the posterior
+  distribution
+- Sampling can also help simulate the model, to check it, or to
+  simulate new predictions.
+***** About linear models
+- Normal distributions are extremely used because they are common in
+  nature and easy to calculate with.
+**** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
 :LOGBOOK:  
+- State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 17:08]
 - State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
 :END:      
 These lectures are available on his youtube channel, and explain in
-more detail what his book is about. Skipped to the Markov Chain Monte
-Carlo part.
+more detail what his book is about.
 
 *** 2019-05-06 monday
 **** Continued to read the book, notes in last friday's section
@@ -561,8 +578,9 @@ stan_hist(fit)
   + Finally, the generated quantities block calculates any data based
     on the model's results, so it might be useful in this case.
 *** 2019-05-09 thursday
-**** STARTED An example with generated quantities
+**** DONE An example with generated quantities :STAN:R:
 :LOGBOOK:  
+- State "DONE"       from "STARTED" [2019-05-09 jeu. 13:51]
 - State "STARTED"    from "TODO"       [2019-05-09 jeu. 09:42]
 :END:      
 
@@ -697,3 +715,5 @@ ones we generated in the beginning. It looks as if the noise wasn't
 taken in account. It's probably a result of the colMeans. We looked at
 colMedian, to see if the result would be different but it seems it
 gives almost the same points.
+**** Continued watching the MOOC, particularly the first and fourth modules
+**** Continued to read the book, notes in last friday's section
