@@ -8,7 +8,7 @@
 #+TAGS: [ TOOLS : ORGMODE(o) GIT(g)  ]
 #+TAGS: PAPER(P) VIDEO(V) MEETING(m) REPORT(V)
 #+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!) 
-#+SEQ_TODO: REWORK(rk!)
+#+SEQ_TODO: REWORK(r!)
 
 * Introduction
 This file is the report for my internship, about automating
@@ -321,6 +321,7 @@ best way to improve artificial systems in the future.
 - Priors need to be at least a little precise, otherwise they bring
   nothing and the posterior will only depend on the data. Bad priors
   are relatively harmless, only useless.
+***** About polynomial models
 **** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
 :LOGBOOK:  
 - State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 17:08]
@@ -457,6 +458,21 @@ stan_dens(fit) #attention à la densité, elle n'est pas toujours pertinente
 [[file:./images/stan_dens.png]]
 
 *** 2019-05-07 tuesday
+**** Search for a way to generate data once Stan has found the parameters :STAN:
+- Looked at different packages such as rstanarm but they are too restricted
+- Looked at Stan's program blocks
+  + The data block lists the data we'll give to Stan. It's possible to
+    use restrictions between < > (the data won't be negative...). 
+    Within a block, anything declared, can then be used subsequently.
+  + The transformed data block is used to create new data based on the
+    input data. It has no particular use for this case.
+  + The parameters block indicates the parameters that will be estimated
+    by Stan.
+  + The transformed parameters block includes optional parameters that
+    are dependent on the previous parameters.
+  + The model block specifies the priors and likelihood
+  + Finally, the generated quantities block calculates any data based
+    on the model's results, so it might be useful in this case.
 **** Tried to use Stan with more complex examples :STAN:R:
 ***** With noise depending on x
 
@@ -576,22 +592,9 @@ stan_hist(fit)
 
 #+RESULTS:
 [[file:./images/ex2_hist.png]]
-**** Search for a way to generate data once Stan has found the parameters :STAN:
-- Looked at different packages such as rstanarm but they are too restricted
-- Looked at Stan's program blocks
-  + The data block lists the data we'll give to Stan. It's possible to
-    use restrictions between < > (the data won't be negative...). 
-    Within a block, anything declared, can then be used subsequently.
-  + The transformed data block is used to create new data based on the
-    input data. It has no particular use for this case.
-  + The parameters block indicates the parameters that will be estimated
-    by Stan.
-  + The transformed parameters block includes optional parameters that
-    are dependent on the previous parameters.
-  + The model block specifies the priors and likelihood
-  + Finally, the generated quantities block calculates any data based
-    on the model's results, so it might be useful in this case.
 *** 2019-05-09 thursday
+**** Continued to read the book, notes on May 3rd section
+**** Continued watching the MOOC, particularly the first and fourth modules
 **** DONE An example with generated quantities ([[Generated Quantities][Reworked in friday's entry]]) :STAN:R:
 :LOGBOOK:  
 - State "DONE"       from "STARTED" [2019-05-09 jeu. 13:51]
@@ -728,13 +731,102 @@ ones we generated in the beginning. It looks as if the noise wasn't
 taken in account. It's probably a result of the colMeans. We looked at
 colMedian, to see if the result would be different but it seems it
 gives almost the same points.
-
-**** Continued watching the MOOC, particularly the first and fourth modules
-**** Continued to read the book, notes on May 3rd section
 *** 2019-05-09 friday
-**** Continued to read the book, notes on May 3rd section
+**** REWORK <<Generated Quantities>>
+Following Tom's advice, we changed the model for the generated
+quantities test.
+
+#+begin_src R :results output :session *R* :exports both
+library(ggplot2)
+library(rstan)
+generate_dataset=function(intercept, coefficient, N, min_x=0, max_x=100, sigma=1){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = coefficient * x + intercept + rnorm(N,sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+df=generate_dataset(12, 3, 500, sigma=15)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+
+modelString = "data { // the observations
+    int<lower=1> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real coefficient;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+} 
+model {
+    // We define our priors
+    intercept   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
+    coefficient ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+
+    // Then, our likelihood function
+    y ~ normal(coefficient*x + intercept, sigma);
+}
+generated quantities {
+   real x_pos = x[categorical_rng(rep_vector(1,N) / N)];
+   real y_pos; // posterior predictions
+   y_pos = normal_rng(coefficient*x_pos+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+                mean se_mean    sd     2.5%      25%      50%      75%    97.5%
+intercept      11.84    0.04  1.30     9.35    10.93    11.85    12.72    14.35
+coefficient     2.98    0.00  0.02     2.94     2.97     2.98     3.00     3.03
+sigma          14.76    0.01  0.49    13.83    14.42    14.75    15.08    15.74
+x_pos          50.89    0.67 29.37     3.00    25.00    51.00    77.00    98.00
+y_pos         164.20    2.02 89.09    15.22    87.91   165.14   242.90   308.71
+lp__        -1595.10    0.05  1.25 -1598.47 -1595.65 -1594.77 -1594.20 -1593.70
+            n_eff Rhat
+intercept     831 1.00
+coefficient   871 1.00
+sigma        1399 1.00
+x_pos        1897 1.00
+y_pos        1940 1.00
+lp__          636 1.01
+
+Samples were drawn using NUTS(diag_e) at Fri May 10 14:05:37 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Now we look at the generated y
+
+#+begin_src R :results output graphics :file ./images/ex3_reworked_comparative_plot.png :exports both :width 600 :height 400 :session *R* 
+extracted=rstan::extract(fit)
+df_generated = data.frame(x=extracted$x_pos, y=extracted$y_pos, origin='generated')
+df_generated = df_generated[sample(nrow(df_generated), nrow(df)), ]  # there are more points in df_generated, so to have a nicer plot we sample exactly the same number than in df
+df$origin = 'initial'
+tmp = rbind(df, df_generated)
+ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.5)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex3_reworked_comparative_plot.png]]
+
+This way we don't have to make a mean that erases the noise's effect,
+and the generated y could definitely be used for further calculation.
 **** Tried to use Stan with more complex examples :STAN:R:
-***** With a full polynomial model :
+***** With a full polynomial model (needs a rework):
 We'll assume for this one that the noise follows a simple model, to
 make it easier. We generate data, this time with three
 parameters. We'll call them second_ degree, first_ degree and intercept.
@@ -849,8 +941,11 @@ stan_trace(fit, pars = c("intercept", "second_degree", "first_degree", "sigma"))
 [[file:./images/ex4_trace.png]]
 
 If we look at the trace it becomes clear that our model must have been
-wrong, because the chains don't converge towards each other at all. We
-follow stan's advice to look at the pairs plot.
+wrong, because the chains don't converge towards each other at
+all. It's apparent polynomial regression cannot be done with a
+model based on linear regression and only slightly changed.
+
+Stan's warnings advises us to look at the pairs plot.
 
 #+begin_src R :results output graphics :file ./images/ex4_pairs.png :exports both :width 600 :height 400 :session *R* 
 pairs(fit)
@@ -860,97 +955,8 @@ pairs(fit)
 [[file:./images/ex4_pairs.png]]
 
 Apparently, there should be a negative relationship between lp__ and
-energy__, however I don't really understand how to read this plot.
-**** REWORK <<Generated Quantities>>
-Following Tom's advice, we changed the model for the generated
-quantities test.
-
-#+begin_src R :results output :session *R* :exports both
-library(ggplot2)
-library(rstan)
-generate_dataset=function(intercept, coefficient, N, min_x=0, max_x=100, sigma=1){
-    x = sample(min_x:max_x,N,replace=T) 
-    y = coefficient * x + intercept + rnorm(N,sd=sigma)
-    df = data.frame(x=x,y=y)
-    return(df)
-}
-df=generate_dataset(12, 3, 500, sigma=15)
-#+end_src
-
-#+begin_src R :results output :session *R* :exports both
-library(rstan)
-
-modelString = "data { // the observations
-    int<lower=1> N; // number of points
-    vector[N] x;
-    vector[N] y;
-}
-parameters { // what we want to find
-    real intercept;
-    real coefficient;
-    real<lower=0> sigma; // indication: sigma cannot be negative
-} 
-model {
-    // We define our priors
-    intercept   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
-    coefficient ~ normal(0, 10);
-    sigma       ~ normal(0, 10);
-
-    // Then, our likelihood function
-    y ~ normal(coefficient*x + intercept, sigma);
-}
-generated quantities {
-   real x_pos = x[categorical_rng(rep_vector(1,N) / N)];
-   real y_pos; // posterior predictions
-   y_pos = normal_rng(coefficient*x_pos+intercept, sigma);
-}
-"
-sm = stan_model(model_code = modelString)
-
-#+end_src
-
-#+begin_src R :results output :session *R* :exports both
-data = list(N=nrow(df),x=df$x,y=df$y)
-fit = sampling(sm,data=data, iter=500, chains=8)
-print(fit)
-#+end_src
-
-#+RESULTS:
-#+begin_example
-                mean se_mean    sd     2.5%      25%      50%      75%    97.5%
-intercept      11.84    0.04  1.30     9.35    10.93    11.85    12.72    14.35
-coefficient     2.98    0.00  0.02     2.94     2.97     2.98     3.00     3.03
-sigma          14.76    0.01  0.49    13.83    14.42    14.75    15.08    15.74
-x_pos          50.89    0.67 29.37     3.00    25.00    51.00    77.00    98.00
-y_pos         164.20    2.02 89.09    15.22    87.91   165.14   242.90   308.71
-lp__        -1595.10    0.05  1.25 -1598.47 -1595.65 -1594.77 -1594.20 -1593.70
-            n_eff Rhat
-intercept     831 1.00
-coefficient   871 1.00
-sigma        1399 1.00
-x_pos        1897 1.00
-y_pos        1940 1.00
-lp__          636 1.01
-
-Samples were drawn using NUTS(diag_e) at Fri May 10 14:05:37 2019.
-For each parameter, n_eff is a crude measure of effective sample size,
-and Rhat is the potential scale reduction factor on split chains (at 
-convergence, Rhat=1).
-#+end_example
-
-Now we look at the generated y
-
-#+begin_src R :results output graphics :file ./images/ex3_reworked_comparative_plot.png :exports both :width 600 :height 400 :session *R* 
-extracted=rstan::extract(fit)
-df_generated = data.frame(x=extracted$x_pos, y=extracted$y_pos, origin='generated')
-df_generated = df_generated[sample(nrow(df_generated), nrow(df)), ]  # there are more points in df_generated, so to have a nicer plot we sample exactly the same number than in df
-df$origin = 'initial'
-tmp = rbind(df, df_generated)
-ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.5)
-#+end_src
-
-#+RESULTS:
-[[file:./images/ex3_reworked_comparative_plot.png]]
-
-This way we don't have to make a mean that erases the noise's effect,
-and the generated y could definitely be used for further calculation.
+energy__, however this plot is quite difficult to understand without
+indication.
+**** Continued to read the book, notes on May 3rd section
+Surprisingly, the part on polynomial regression is very sparse and
+doesn't really help us make a functional model.
