@@ -845,8 +845,8 @@ stan_trace(fit, pars = c("intercept", "second_degree", "first_degree", "sigma"))
 [[file:./images/ex4_trace.png]]
 
 If we look at the trace it becomes clear that our model must have been
-wrong, because the chains don't [??? group up??] at all. We follow
-stan's advice to look at the pairs plot.
+wrong, because the chains don't converge towards each other at all. We
+follow stan's advice to look at the pairs plot.
 
 #+begin_src R :results output graphics :file ./images/ex4_pairs.png :exports both :width 600 :height 400 :session *R* 
 pairs(fit)
