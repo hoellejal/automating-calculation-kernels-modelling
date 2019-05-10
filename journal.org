@@ -4,7 +4,7 @@
 #+TITLE:       Journal
 #+AUTHOR:      Hoël Jalmin
 #+LANGUAGE:    en
-#+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!)
+#+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) REWORK (r!) DONE(d!)
 
 * Introduction
 This file is the report for my internship, about automating
@@ -307,6 +307,16 @@ best way to improve artificial systems in the future.
 ***** About linear models
 - Normal distributions are extremely used because they are common in
   nature and easy to calculate with.
+- Two perspectives: ontological and epistemological. The first sees
+  fluctuations, that when summed up make a symmetrical Gaussian
+  distribution. For the second, we only know the mean and variance and
+  considers Gaussian distribution because it is the most common and
+  least surprising (maximu entropy).
+- To build a model, we need to know the outcomes, the likelihood, the
+  predictors and how they relate to the likelihood and the priors.
+- Priors need to be at least a little precise, otherwise they bring
+  nothing and the posterior will only depend on the data. Bad priors
+  are relatively harmless, only useless.
 **** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
 :LOGBOOK:  
 - State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 17:08]
@@ -316,7 +326,7 @@ These lectures are available on his youtube channel, and explain in
 more detail what his book is about.
 
 *** 2019-05-06 monday
-**** Continued to read the book, notes in last friday's section
+**** Continued to read the book, notes on May 3rd section
 **** Talked to Tom about a simple Stan example and notebooks
 **** Started to use Stan with simple cases, following Tom's example :STAN:R:
 
@@ -716,4 +726,134 @@ taken in account. It's probably a result of the colMeans. We looked at
 colMedian, to see if the result would be different but it seems it
 gives almost the same points.
 **** Continued watching the MOOC, particularly the first and fourth modules
-**** Continued to read the book, notes in last friday's section
+**** Continued to read the book, notes on May 3rd section
+*** 2019-05-09 friday
+**** Continued to read the book, notes on May 3rd section
+**** Tried to use Stan with more complex examples :STAN:R:
+***** With a full polynomial model :
+We'll assume for this one that the noise follows a simple model, to
+make it easier. We generate data, this time with three
+parameters. We'll call them second_ degree, first_ degree and intercept.
+
+#+begin_src R :results output :session *R* :exports both
+library(ggplot2)
+library(rstan)
+
+generate_dataset=function(intercept, second_degree, first_degree, N, min_x=0, max_x=100, sigma){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = second_degree * x^2 + first_degree * x + intercept + rnorm(N, sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+
+df=generate_dataset(100,2,6, 500, sigma=150)
+head(df)
+#+end_src
+
+#+RESULTS:
+:  
+:     x          y
+: 1  34  2374.6061
+: 2  75 11693.2535
+: 3  98 20220.1767
+: 4  73 11129.6262
+: 5   1   210.0193
+: 6 100 20466.1323
+
+#+begin_src R :results output graphics :file ./images/ex4_figure.png :exports both :width 600 :height 400 :session *R* 
+ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3, color="darkblue")
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_figure.png]]
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data { // the observations
+    int<lower=0> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real second_degree;
+    real first_degree;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+}
+
+model {
+     // We define our priors
+    second_degree ~ normal(0, 10);
+    first_degree ~ normal(0, 10);
+    intercept   ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+    // Then, our likelihood function
+    for (n in 1:(N)){
+      y ~ normal(second_degree*(x[n]*x[n]) + first_degree*x[n] + intercept, sigma);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Warning messages:
+1: There were 155 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
+http://mc-stan.org/misc/warnings.html#bfmi-low 
+3: Examine the pairs() plot to diagnose sampling problems
+
+Inference for Stan model: e6c4a717223c83fc91c9c4018606219b.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                     mean se_mean      sd        2.5%         25%         50%
+intercept          216.01  170.46  347.33        1.02        5.15       16.60
+second_degree       -2.18    0.06    0.11       -2.26       -2.24       -2.24
+first_degree       262.91    6.67   13.61      237.07      264.29      270.41
+sigma             4715.81   10.28   21.48     4672.10     4713.75     4725.89
+lp__          -2463195.40  827.57 1668.03 -2464315.63 -2464275.36 -2464166.68
+                      75%       97.5% n_eff  Rhat
+intercept          184.50      864.26     4  6.60
+second_degree       -2.19       -1.96     4  5.75
+first_degree       271.17      272.17     4  6.17
+sigma             4729.56     4735.32     4  3.92
+lp__          -2462778.64 -2460240.49     4 12.27
+
+Samples were drawn using NUTS(diag_e) at Fri May 10 12:34:16 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+The sampling issued several warnings, which isn't surprising because
+the parameters found by Stan don't match at all with the ones we chose
+to generate the data.
+
+#+begin_src R :results output graphics :file ./images/ex4_trace.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars = c("intercept", "second_degree", "first_degree", "sigma"))+ scale_color_manual(values = blues9)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_trace.png]]
+
+If we look at the trace it becomes clear that our model must have been
+wrong, because the chains don't [??? group up??] at all. We follow
+stan's advice to look at the pairs plot.
+
+#+begin_src R :results output graphics :file ./images/ex4_pairs.png :exports both :width 600 :height 400 :session *R* 
+pairs(fit)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_pairs.png]]
+
+Apparently, there should be a negative relationship between lp__ and
+energy__, however I don't really understand how to read this plot.
