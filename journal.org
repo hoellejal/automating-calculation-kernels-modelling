@@ -826,7 +826,7 @@ ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.5)
 This way we don't have to make a mean that erases the noise's effect,
 and the generated y could definitely be used for further calculation. 
 **** Tried to use Stan with more complex examples :STAN:R:
-***** With a full polynomial model ([[Polynomial model][Reworked in monday's entry]]):
+***** With a full polynomial model (needs a rework):
 We'll assume for this one that the noise follows a simple model, to
 make it easier. We generate data, this time with three
 parameters. We'll call them second_ degree, first_ degree and intercept.
@@ -962,7 +962,7 @@ Surprisingly, the part on polynomial regression is very sparse and
 doesn't really help us make a functional model.
 *** 2019-05-13 monday
 **** Continued to read the book, notes on May 3rd section
-**** REWORK <<Polynomial model>> :STAN:R:
+**** A second try with a polynomial model                            :STAN:R:
 We still have a simple model for the noise, and three parameters:
 second_ degree, first_ degree and intercept.
 
@@ -1060,3 +1060,145 @@ At least this time the chains converge towards each other, so we can
 conclude this model is better than the previous but still needs to be
 worked on to correct some inaccuracies (we probably need to add some
 informative priors).
+
+The surprising part is that depending on the value of sigma, the trace
+can show a very different behavior. For example, with a small value of
+sigma:
+
+#+begin_src R :results output :session *R* :exports both
+df=generate_dataset(100,6,2, 500, sigma=4)
+df$x2=df$x^2
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] x2;
+    vector[N] y;
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+
+model {
+    // We use no prior, as the previous ones are too vague to be useful for computing the posterior
+    y ~ normal(second_degree*x2+first_degree*x+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+data = list(N=nrow(df),x=df$x,x2=df$x2,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Warning messages:
+1: There were 130 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 29 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: There were 5 chains where the estimated Bayesian Fraction of Missing Information was low. See
+http://mc-stan.org/misc/warnings.html#bfmi-low 
+4: Examine the pairs() plot to diagnose sampling problems
+
+Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean     sd     2.5%      25%      50%     75%
+intercept        63.12   15.45  32.48     6.88    41.54    60.36   99.71
+first_degree      7.48    0.61   1.29     5.98     6.02     7.59    8.33
+second_degree     1.99    0.01   0.01     1.97     1.98     1.99    2.00
+sigma            15.12    4.76  10.15     3.92     4.16    14.88   21.47
+lp__          -1456.41  200.83 409.77 -2006.60 -1779.47 -1594.54 -953.74
+                97.5% n_eff Rhat
+intercept      100.53     4 5.47
+first_degree     9.74     4 5.32
+second_degree    2.00     4 5.12
+sigma           33.99     5 4.72
+lp__          -951.94     4 8.67
+
+Samples were drawn using NUTS(diag_e) at Mon May 13 11:16:36 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/ex4_reworked_trace_small_sigma.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit)+ scale_color_manual(values = blues9)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_reworked_trace_small_sigma.png]]
+
+This time the chains don't converge again, despite the fact that the
+model is still the same.
+
+If we try with a much higher value of sigma, the chains do converge
+but the found parameters have a higher standard deviation for their
+value (which is not surprising).
+
+#+begin_src R :results output :session *R* :exports both
+df=generate_dataset(100,6,2, 500, sigma=986)
+df$x2=df$x^2
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] x2;
+    vector[N] y;
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+
+model {
+    // We use no prior, as the previous ones are too vague to be useful for computing the posterior
+    y ~ normal(second_degree*x2+first_degree*x+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+data = list(N=nrow(df),x=df$x,x2=df$x2,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean     sd     2.5%      25%      50%      75%
+intercept       370.96    5.32 133.67   104.03   284.74   374.36   454.83
+first_degree     -3.19    0.26   6.27   -14.95    -7.50    -3.26     1.00
+second_degree     2.08    0.00   0.06     1.95     2.04     2.08     2.12
+sigma          1025.21    1.04  32.52   964.19  1002.94  1023.27  1045.56
+lp__          -3709.02    0.05   1.46 -3712.87 -3709.72 -3708.69 -3707.96
+                 97.5% n_eff Rhat
+intercept       628.72   631 1.02
+first_degree      9.54   575 1.01
+second_degree     2.20   627 1.01
+sigma          1092.03   982 1.01
+lp__          -3707.20   707 1.00
+
+Samples were drawn using NUTS(diag_e) at Mon May 13 11:30:19 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+As we can see here, the parameters are much too inaccurate to model
+properly the situation.
+
+#+begin_src R :results output graphics :file ./images/ex4_reworked_trace_high_sigma.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit)+ scale_color_manual(values = blues9)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_reworked_trace_high_sigma.png]]
