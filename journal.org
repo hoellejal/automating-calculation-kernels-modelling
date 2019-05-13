@@ -731,8 +731,8 @@ ones we generated in the beginning. It looks as if the noise wasn't
 taken in account. It's probably a result of the colMeans. We looked at
 colMedian, to see if the result would be different but it seems it
 gives almost the same points.
-*** 2019-05-09 friday
-**** REWORK <<Generated Quantities>>
+*** 2019-05-10 friday
+**** REWORK <<Generated Quantities>>  :STAN:R:
 Following Tom's advice, we changed the model for the generated
 quantities test.
 
@@ -824,9 +824,9 @@ ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.5)
 [[file:./images/ex3_reworked_comparative_plot.png]]
 
 This way we don't have to make a mean that erases the noise's effect,
-and the generated y could definitely be used for further calculation.
+and the generated y could definitely be used for further calculation. 
 **** Tried to use Stan with more complex examples :STAN:R:
-***** With a full polynomial model (needs a rework):
+***** With a full polynomial model ([[Polynomial model][Reworked in monday's entry]]):
 We'll assume for this one that the noise follows a simple model, to
 make it easier. We generate data, this time with three
 parameters. We'll call them second_ degree, first_ degree and intercept.
@@ -848,13 +848,13 @@ head(df)
 
 #+RESULTS:
 :  
-:     x          y
-: 1  34  2374.6061
-: 2  75 11693.2535
-: 3  98 20220.1767
-: 4  73 11129.6262
-: 5   1   210.0193
-: 6 100 20466.1323
+:    x          y
+: 1 62  8224.6279
+: 2 37  3074.9870
+: 3  3   216.5906
+: 4 16   653.4510
+: 5 13   438.8789
+: 6 90 16947.5308
 
 #+begin_src R :results output graphics :file ./images/ex4_figure.png :exports both :width 600 :height 400 :session *R* 
 ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3, color="darkblue")
@@ -960,3 +960,103 @@ indication.
 **** Continued to read the book, notes on May 3rd section
 Surprisingly, the part on polynomial regression is very sparse and
 doesn't really help us make a functional model.
+*** 2019-05-13 monday
+**** Continued to read the book, notes on May 3rd section
+**** REWORK <<Polynomial model>> :STAN:R:
+We still have a simple model for the noise, and three parameters:
+second_ degree, first_ degree and intercept.
+
+#+begin_src R :results output :session *R* :exports both
+library(ggplot2)
+library(rstan)
+
+generate_dataset=function(intercept, first_degree, second_degree, N, min_x=0, max_x=100, sigma){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = second_degree * (x^2) + first_degree * x + intercept + rnorm(N, sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+
+df=generate_dataset(100,6,2, 500, sigma=150)
+df$x2=df$x^2 #Need to add it here because we cannot in the stan model
+head(df)
+#+end_src
+
+#+RESULTS:
+:  
+:    x            y   x2
+: 1 13   729.215216  169
+: 2 60  7439.417049 3600
+: 3 83 14208.692665 6889
+: 4 12   216.362362  144
+: 5  2    -3.035517    4
+: 6 35  2590.543016 1225
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] x2;
+    vector[N] y;
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+
+model {
+    // We use no prior, as the previous ones are too vague to be useful for computing the posterior
+    y ~ normal(second_degree*x2+first_degree*x+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,x2=df$x2,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean    sd     2.5%      25%      50%      75%
+intercept       121.55    1.24 20.75    81.20   107.04   121.62   136.34
+first_degree      4.75    0.05  0.94     2.93     4.08     4.75     5.40
+second_degree     2.01    0.00  0.01     2.00     2.01     2.01     2.02
+sigma           150.62    0.14  4.76   141.12   147.41   150.53   154.02
+lp__          -2751.30    0.06  1.45 -2755.14 -2752.01 -2750.98 -2750.25
+                 97.5% n_eff Rhat
+intercept       159.41   278 1.02
+first_degree      6.56   328 1.02
+second_degree     2.03   462 1.01
+sigma           159.71  1108 1.01
+lp__          -2749.49   567 1.01
+
+Samples were drawn using NUTS(diag_e) at Mon May 13 10:23:09 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+This time, the parameters found by Stan are quite close to the ones we
+chose to generate the data, but it's still quite inaccurate,
+especially for the intercept.
+
+#+begin_src R :results output graphics :file ./images/ex4_reworked_trace.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit)+ scale_color_manual(values = blues9)
+#+end_src
+
+#+RESULTS:
+[[file:./images/ex4_reworked_trace.png]]
+
+At least this time the chains converge towards each other, so we can
+conclude this model is better than the previous but still needs to be
+worked on to correct some inaccuracies (we probably need to add some
+informative priors).
