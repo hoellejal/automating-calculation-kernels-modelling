@@ -9,6 +9,7 @@
 #+TAGS: PAPER(P) VIDEO(V) MEETING(m) SEMINAR(s)
 #+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!) 
 #+SEQ_TODO: REWORK(r!)
+#+SEQ_TODO: EDIT(e!)
 
 * Introduction
 This file is the report for my internship, about automating
@@ -265,10 +266,9 @@ best way to improve artificial systems in the future.
 - Bayesian statistics are able to process small samples and don't need
   a prior hypothesis to confirm or reject. In bayesian statistics,
   probabilities are interpreted as uncertainty, models' parameters are
-  modelled by probability laws and parameters are
-  approximated by execution.
-- On a des observations/déductions prior, qui nous aident à aiguiller
-  l'analyse
+  modelled by probability laws and parameters are approximated by execution.
+- The priors are observations/deductions that we know before the
+  analysis and that helps guide the outcome.
 
 ***** About priors, likelihood and posteriors
 - Small worlds are the logical worlds of the models. There are no
@@ -308,6 +308,7 @@ best way to improve artificial systems in the future.
   distribution
 - Sampling can also help simulate the model, to check it, or to
   simulate new predictions.
+
 ***** About linear and polynomial models
 - Normal distributions are extremely used because they are common in
   nature and easy to calculate with.
@@ -322,11 +323,24 @@ best way to improve artificial systems in the future.
   nothing and the posterior will only depend on the data. Bad priors
   are relatively harmless, only useless.
 - Polynomial regression is not advised
+
 ***** About multivariate linear models
 - Multivariate linear models are much like linear models but with
   several variables. For example, the likelihood y follows a normal
   distribution based on alpha + beta_r x + beta_s z with beta_r and beta_s
   coefficients that measure the association between x and y.
+- Sometimes, the association between two variables is quite hidden,
+  and so a regression with both is needed to see it. In this case,
+  both need to be considered or their relationship with the posterior
+  will be hidden.
+- Sometimes, adding variables is neither useful nor desirable: it may
+  falsify the result of the regression because two predictor variables
+  will be highly corrolated (multicollinearity). And including
+  post-treatment variables will hide the relationship between the
+  outcome and the first variable if there are unobserved confounders
+  between the outcome and the post-treatment variable. 
+
+***** About overfitting and regularization
 **** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
 :LOGBOOK:  
 - State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 17:08]
@@ -832,7 +846,7 @@ This way we don't have to make a mean that erases the noise's effect,
 and the generated y could definitely be used for further calculation. 
 
 **** Tried to use Stan with more complex examples :STAN:R:
-***** With a full polynomial model (needs a rework):
+***** With a full polynomial model ([[Polynomial Model][Reworked in tuesday's entry]]):
 We'll assume for this one that the noise follows a simple model, to
 make it easier. We generate data, this time with three
 parameters. We'll call them second_ degree, first_ degree and intercept.
@@ -853,14 +867,15 @@ head(df)
 #+end_src
 
 #+RESULTS:
-:  
-:    x          y
-: 1 62  8224.6279
-: 2 37  3074.9870
-: 3  3   216.5906
-: 4 16   653.4510
-: 5 13   438.8789
-: 6 90 16947.5308
+#+begin_example
+   x          y
+1  9   419.2124
+2 90 16933.1164
+3 93 18001.0911
+4 89 16522.1687
+5 20  1013.0832
+6  9   534.0954
+#+end_example
 
 #+begin_src R :results output graphics :file ./images/ex4_figure.png :exports both :width 600 :height 400 :session *R* 
 ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3, color="darkblue")
@@ -896,6 +911,8 @@ model {
 "
 sm = stan_model(model_code = modelString)
 #+end_src
+
+#+RESULTS:
 
 #+begin_src R :results output :session *R* :exports both
 data = list(N=nrow(df),x=df$x,y=df$y)
@@ -963,6 +980,142 @@ pairs(fit)
 Apparently, there should be a negative relationship between lp__ and
 energy__, however this plot is quite difficult to understand without
 indication.
+
+***** EDIT 2019-05-14 Changed the model following Tom's advice
+
+Tom figured out a mistake in the declaration of the likelihood
+function.
+
+#+begin_src R :results output :session *R* :exports both
+df=generate_dataset(100,2,6, 500, sigma=150)
+
+modelString = "data { // the observations
+    int<lower=0> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+}
+
+model {
+    second_degree ~ normal(0, 10);
+    first_degree ~ normal(0, 10);
+    intercept   ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+    // Then, our likelihood function
+    for (n in 1:(N)){
+      y[n] ~ normal(second_degree*(x[n]*x[n]) + first_degree*x[n] + intercept, sigma);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 10461bf4fda3fe871ad7e125904745bb.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean   sd     2.5%      25%      50%      75%
+intercept        28.85    0.46 8.98    12.14    22.61    28.56    34.55
+first_degree      9.43    0.02 0.55     8.36     9.07     9.44     9.80
+second_degree     1.97    0.00 0.01     1.96     1.97     1.97     1.97
+sigma           134.36    0.09 3.26   128.36   132.07   134.29   136.65
+lp__          -2881.15    0.07 1.43 -2884.70 -2881.83 -2880.84 -2880.10
+                 97.5% n_eff Rhat
+intercept        47.97   381 1.01
+first_degree     10.50   577 1.01
+second_degree     1.98   740 1.00
+sigma           140.60  1293 1.00
+lp__          -2879.40   479 1.01
+
+Samples were drawn using NUTS(diag_e) at Tue May 14 14:42:59 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Surprisingly, despite the correction, the results are still wildly
+off. We think the outcome might be influenced by faulty priors, so we
+try removing them.
+
+#+begin_src R :results output :session *R* :exports both
+df=generate_dataset(100,2,6, 500, sigma=150)
+
+modelString = "data { // the observations
+    int<lower=0> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+}
+
+model {
+    // Then, our likelihood function
+    for (n in 1:(N)){
+      y[n] ~ normal(second_degree*(x[n]*x[n]) + first_degree*x[n] + intercept, sigma);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: d2b16cc8b2214d87ccd7963b321901c3.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean    sd     2.5%      25%      50%      75%
+intercept       105.29    1.07 17.86    71.14    92.35   105.77   117.64
+first_degree      5.66    0.05  0.88     4.01     5.05     5.64     6.29
+second_degree     2.00    0.00  0.01     1.99     2.00     2.00     2.01
+sigma           148.09    0.17  4.88   139.01   144.77   147.95   151.36
+lp__          -2743.12    0.05  1.43 -2746.50 -2743.85 -2742.79 -2742.08
+                 97.5% n_eff Rhat
+intercept       139.21   278 1.02
+first_degree      7.34   331 1.02
+second_degree     2.02   476 1.01
+sigma           158.16   805 1.01
+lp__          -2741.28   680 1.01
+
+Samples were drawn using NUTS(diag_e) at Tue May 14 14:49:24 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+This time the results are much closer to the truth, and very similar
+to the results we found with the second method (on monday's 13th
+entry). The conclusion is that we need to find more precise priors,
+or give a very general one (or none) so it won't influence the outcome
+in a way we don't want it to.
+
 **** Continued to read the book, notes on May 3rd section
 Surprisingly, the part on polynomial regression is very sparse and
 doesn't really help us make a functional model.
@@ -989,14 +1142,15 @@ head(df)
 #+end_src
 
 #+RESULTS:
-:  
-:    x         y
-: 1 58 7024.5313
-: 2 50 5312.4574
-: 3 54 6308.8001
-: 4 64 9105.7649
-: 5 37 3092.9677
-: 6  2  265.1541
+#+begin_example
+   x          y
+1  0   257.9807
+2 45  4353.7896
+3 65  8872.7711
+4 91 17196.1885
+5 86 15519.8198
+6 42  3911.2678
+#+end_example
 
 #+begin_src R :results output :session *R* :exports both
 modelString = "data {
@@ -1020,6 +1174,8 @@ model {
 sm = stan_model(model_code = modelString)
 #+end_src
 
+#+RESULTS:
+
 #+begin_src R :results output :session *R* :exports both
 data = list(N=nrow(df),x=df$x,x2=x2,y=df$y)
 fit = sampling(sm,data=data, iter=500, chains=8)
@@ -1027,25 +1183,26 @@ print(fit)
 #+end_src
 
 #+RESULTS:
+
 #+begin_example
-Inference for Stan model: 9b36de8503b4c2eb2dac2af3794b006a.
+Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
 8 chains, each with iter=500; warmup=250; thin=1; 
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
                   mean se_mean    sd     2.5%      25%      50%      75%
-intercept       125.69    1.17 19.11    88.25   112.41   126.28   138.38
-first_degree      4.84    0.05  0.88     3.16     4.25     4.82     5.42
-second_degree     2.01    0.00  0.01     1.99     2.00     2.01     2.02
-sigma           147.46    0.14  4.67   138.53   144.41   147.27   150.55
-lp__          -2740.89    0.07  1.40 -2744.25 -2741.63 -2740.57 -2739.85
+intercept        74.78    0.87 18.35    39.43    61.72    74.65    87.40
+first_degree      6.94    0.04  0.88     5.18     6.36     6.94     7.53
+second_degree     1.99    0.00  0.01     1.97     1.98     1.99     1.99
+sigma           150.35    0.14  4.71   141.63   146.97   150.29   153.73
+lp__          -2751.41    0.05  1.45 -2755.14 -2752.10 -2751.08 -2750.32
                  97.5% n_eff Rhat
-intercept       164.47   267 1.03
-first_degree      6.65   331 1.02
-second_degree     2.03   424 1.02
-sigma           156.55  1045 1.00
-lp__          -2739.16   445 1.02
+intercept       111.46   448 1.01
+first_degree      8.70   501 1.01
+second_degree     2.01   597 1.01
+sigma           159.24  1214 1.00
+lp__          -2749.61   713 1.01
 
-Samples were drawn using NUTS(diag_e) at Mon May 13 16:26:10 2019.
+Samples were drawn using NUTS(diag_e) at Tue May 14 11:28:37 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -1099,14 +1256,14 @@ print(fit)
 #+end_src
 
 #+RESULTS:
-#+begin_example
 
+#+begin_example
 Warning messages:
-1: There were 130 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+1: There were 229 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
-2: There were 29 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+2: There were 1 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
 http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
-3: There were 5 chains where the estimated Bayesian Fraction of Missing Information was low. See
+3: There were 4 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 4: Examine the pairs() plot to diagnose sampling problems
 
@@ -1114,20 +1271,20 @@ Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
 8 chains, each with iter=500; warmup=250; thin=1; 
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
-                  mean se_mean     sd     2.5%      25%      50%     75%
-intercept        63.12   15.45  32.48     6.88    41.54    60.36   99.71
-first_degree      7.48    0.61   1.29     5.98     6.02     7.59    8.33
-second_degree     1.99    0.01   0.01     1.97     1.98     1.99    2.00
-sigma            15.12    4.76  10.15     3.92     4.16    14.88   21.47
-lp__          -1456.41  200.83 409.77 -2006.60 -1779.47 -1594.54 -953.74
-                97.5% n_eff Rhat
-intercept      100.53     4 5.47
-first_degree     9.74     4 5.32
-second_degree    2.00     4 5.12
-sigma           33.99     5 4.72
-lp__          -951.94     4 8.67
+                  mean se_mean     sd     2.5%      25%     50%     75%   97.5%
+intercept        93.74    7.03  15.26    57.08    89.96  100.45  100.97  103.14
+first_degree      6.25    0.28   0.61     5.86     5.96    5.98    6.40    7.69
+second_degree     2.00    0.00   0.01     1.99     2.00    2.00    2.00    2.00
+sigma             6.33    1.70   3.89     3.68     3.87    4.81    7.13   15.05
+lp__          -1056.63  103.39 215.81 -1592.99 -1110.91 -951.71 -921.93 -920.60
+              n_eff Rhat
+intercept         5 3.37
+first_degree      5 3.28
+second_degree     5 3.22
+sigma             5 2.75
+lp__              4 4.73
 
-Samples were drawn using NUTS(diag_e) at Mon May 13 11:16:36 2019.
+Samples were drawn using NUTS(diag_e) at Tue May 14 11:30:45 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -1181,19 +1338,19 @@ Inference for Stan model: 6001096c2a1f8ca4aec729de06bdbead.
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
                   mean se_mean     sd     2.5%      25%      50%      75%
-intercept       370.96    5.32 133.67   104.03   284.74   374.36   454.83
-first_degree     -3.19    0.26   6.27   -14.95    -7.50    -3.26     1.00
-second_degree     2.08    0.00   0.06     1.95     2.04     2.08     2.12
-sigma          1025.21    1.04  32.52   964.19  1002.94  1023.27  1045.56
-lp__          -3709.02    0.05   1.46 -3712.87 -3709.72 -3708.69 -3707.96
+intercept        54.93    5.63 132.23  -202.71   -34.30    49.64   143.42
+first_degree      5.57    0.27   5.96    -6.25     1.39     5.94     9.69
+second_degree     2.02    0.00   0.06     1.91     1.98     2.01     2.06
+sigma          1006.73    1.16  32.68   945.09   984.52  1006.43  1028.69
+lp__          -3700.35    0.06   1.50 -3704.02 -3701.05 -3700.00 -3699.23
                  97.5% n_eff Rhat
-intercept       628.72   631 1.02
-first_degree      9.54   575 1.01
-second_degree     2.20   627 1.01
-sigma          1092.03   982 1.01
-lp__          -3707.20   707 1.00
+intercept       318.61   552 1.01
+first_degree     16.65   501 1.01
+second_degree     2.13   556 1.01
+sigma          1071.30   792 1.01
+lp__          -3698.51   672 1.00
 
-Samples were drawn using NUTS(diag_e) at Mon May 13 11:30:19 2019.
+Samples were drawn using NUTS(diag_e) at Tue May 14 11:32:12 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -1255,3 +1412,77 @@ ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.6)
 Once again, the data generated from the parameters found by stan seems
 quite precise and close enough to the data we generated at the
 beginning.
+*** 2019-05-14 tuesday
+**** REWORK <<Polynomial Model>>
+***** A third model
+We already tried two different models for this one; the first ended up
+with unprecise parameters found, and so did the second one which also
+had the disadvantage to need the vector of x squared as data.
+
+Following Tom's advice, we try to do this in the transformed data
+block.
+
+#+begin_src R :results output :session *R* :exports both
+df=generate_dataset(100,2,6, 500, sigma=150)
+
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] y;
+}
+transformed data{
+    vector[N] x2;
+    for (n in 1:N)
+      x2[n]=x[n]*x[n];
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+model {
+    y ~ normal(second_degree*x2+first_degree*x+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=500, chains=8)
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 91966ecf1347dea6d1c3f249ec4a3d80.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean se_mean    sd     2.5%      25%      50%      75%
+intercept        96.08    1.35 20.83    57.95    81.53    95.94   110.73
+first_degree      5.73    0.05  0.97     3.81     5.07     5.72     6.38
+second_degree     2.00    0.00  0.01     1.98     2.00     2.00     2.01
+sigma           153.74    0.14  4.77   144.75   150.37   153.67   157.03
+lp__          -2761.46    0.07  1.39 -2764.76 -2762.21 -2761.16 -2760.42
+                 97.5% n_eff Rhat
+intercept       135.65   239 1.01
+first_degree      7.61   317 1.01
+second_degree     2.02   420 1.01
+sigma           163.07  1205 1.00
+lp__          -2759.69   435 1.02
+
+Samples were drawn using NUTS(diag_e) at Tue May 14 15:44:11 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Once again, this new model doesn't change the precision of the results
+but it is perhaps easier to understand and use.
+
+***** TODO Taking a look at the priors
+***** TODO Figuring out the right priors
