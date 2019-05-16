@@ -1365,6 +1365,7 @@ stan_trace(fit)+ scale_color_manual(values = blues9)
 
 #+RESULTS:
 [[file:./images/ex4_reworked_trace_high_sigma.png]]
+
 **** A look at generated quantities with a polynomial model :STAN:R:
 
 #+begin_src R :results output :session *R* :exports both
@@ -1484,5 +1485,242 @@ convergence, Rhat=1).
 Once again, this new model doesn't change the precision of the results
 but it is perhaps easier to understand and use.
 
-***** TODO Taking a look at the priors
-***** TODO Figuring out the right priors
+***** DONE Figuring out the right priors
+:LOGBOOK:  
+- State "DONE"       from "STARTED" [2019-05-16 jeu. 09:49]
+- State "STARTED"    from "TODO"       [2019-05-15 mer. 16:06]
+:END:      
+
+With the help of [[http://modernstatisticalworkflow.blogspot.com/2017/04/an-easy-way-to-simulate-fake-data-from.htm][An easy way to simulate fake data from your Stan
+model]], and other articles by Jim Savage, as well as [[https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations ][Stan's wiki entry
+on priors]], we took a closer look at our priors, which used to be:
+variable ~ normal(0,10). However we ran into several issues with that
+prior: not only is it not precise enough, it also can push the
+posterior in a direction we don't want, and we would end up with wrong
+results. Therefore, we made a model that let us look more closely at
+the influence of priors.
+
+#+begin_src R :results output :session *R* :exports both
+library(ggplot2)
+library(rstan)
+
+generate_dataset=function(intercept, second_degree, first_degree, N, min_x=0, max_x=100, sigma){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = second_degree * x^2 + first_degree * x + intercept + rnorm(N, sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+df=generate_dataset(100,2,6, 500, sigma=150)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] y;
+    int<lower = 0, upper = 1> run_estimation; // a switch to evaluate the likelihood
+    real it_mean; //the center of the intercept's distribution
+    real it_sd; //the variance of the intercept's distribution
+    real f_degree_mean; //the center of the first degree's distribution
+    real s_degree_mean; //the center of the second degree's distribution
+    real degree_sd;  //the variance of the first and second degrees's distribution
+    real sigma_mean; //the center of the sigma's distribution
+    real sigma_sd; //the variance of the sigma's distribution
+}
+transformed data{
+    vector[N] x2;
+    for (n in 1:N)
+      x2[n]=x[n]*x[n];
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+model {
+    intercept ~ normal(it_mean, it_sd);
+    first_degree ~ normal(f_degree_mean, degree_sd);
+    second_degree ~ normal(s_degree_mean, degree_sd);
+    sigma ~ normal(sigma_mean, sigma_sd);
+    if(run_estimation==1){ //we have two simulation modes: if run_estimation=0 then the posterior is the prior, else the simulation is the same as before
+      y ~ normal(second_degree*x2+first_degree*x+intercept, sigma);
+    }
+}
+
+generated quantities {
+  vector[N] y_sim;
+  for(i in 1:N) {
+    y_sim[i] = normal_rng(second_degree*(x2[i])+first_degree*x[i]+intercept, sigma);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y,run_estimation=0,it_mean=1,it_sd=10,f_degree_mean=1,s_degree_mean=1,degree_sd=10,sigma_mean=1,sigma_sd=10)
+fit = sampling(sm,data=data, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit, pars=c("intercept", "first_degree", "second_degree", "sigma"))
+y_sim = extract(fit, pars = "y_sim")
+mean(df$y)
+mean(y_sim$y_sim)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 991da9db6de658e6de861ff8730595aa.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+              mean se_mean    sd   2.5%   25%  50%   75% 97.5% n_eff Rhat
+intercept     1.32    0.23  9.83 -18.29 -5.06 1.49  7.86 20.74  1794    1
+first_degree  0.75    0.22  9.60 -18.23 -6.01 1.07  7.28 18.60  1835    1
+second_degree 0.94    0.23 10.13 -19.51 -5.85 1.15  7.85 20.04  2009    1
+sigma         8.28    0.16  5.97   0.42  3.52 7.22 11.87 22.60  1476    1
+
+Samples were drawn using NUTS(diag_e) at Thu May 16 09:37:18 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+ 
+[1] 7450.331
+
+[1] 3338.501
+#+end_example
+
+This way we can see more easily the distribution of the previously
+given priors, and how that makes the generated data
+inaccurate. Indeed, the parameters are really far from their actual
+value, and so the generated data y_ sim is completely off.
+
+To figure out the right priors, the best way would be to approximate
+the value of our parameters and give that approximation as the prior.
+
+#+begin_src R :results output :session *R* :exports both
+mean_0=0 #a vector of means of y values for x=0
+mean_10=0 #a vector of means of y values for x=10
+
+for(x in 1:1000){ #we run 1000 simulations to get a pretty accurate approximation
+  df=generate_dataset(100,2,6, 500, sigma=rnorm(n=1,mean=150,sd=2))
+  #for each simulation we get the mean of y values for x=0 and x=10
+  mean_0[x]=mean(df$y[which(df$x %in% 0)])
+  mean_10[x]=mean(df$y[which(df$x %in% 10)])
+}
+
+sd_intercept=abs(mean(diff(mean_0),na.rm = T))
+#we get the difference between each means and we makes a mean of it to get a sd for the intercept.
+#we use the absolute value for it to be positive.
+
+sd_intercept
+abs(mean(diff(mean_10),na.rm = T))
+
+mean_intercept=round(mean(mean_0,na.rm = T)) 
+#we make a mean of 1000 observations of the values at x=0 (so y=intercept)
+
+intercept=rnorm(500,mean_intercept,sd_intercept)
+#we simulate the intercept to remove it from the y values at x=10
+
+mean_10=mean_10-intercept
+#we removed the value of the intercept so y=first_degree*10+second_degree*100 
+
+mean_sec= mean(mean_10,na.rm = T)%/%100 
+#we divide the mean by 100 and store only the integer part to get the value of the second_degree
+
+mean_first=mean(mean_10,na.rm = T)%%100 %/%10 
+#this time we get the remainder, and divide it by ten to get the value of the first_degree
+
+#+end_src
+
+#+RESULTS:
+:  
+: [1] 0.3397229
+: 
+: [1] 0.02061237
+
+As we can see, the values of the sd are really small, and can be
+replaced by a sd of 1. Now we run our model again but with the
+approximated means of intercept, first-degree and second-degree.
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y,run_estimation=0,it_mean=mean_intercept,it_sd=1,f_degree_mean=mean_first,s_degree_mean=mean_sec,degree_sd=1,sigma_mean=150,sigma_sd=1)
+
+fit = sampling(sm,data=data, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+y_sim = extract(fit, pars = "y_sim")
+mean(df$y)
+mean(y_sim$y_sim)
+print(fit,pars=c("intercept","first_degree","second_degree","sigma"))
+stan_trace(fit,pars=c("intercept","first_degree","second_degree","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+[1] 6798.004
+
+[1] 6653.227
+
+Inference for Stan model: 991da9db6de658e6de861ff8730595aa.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                mean se_mean   sd   2.5%    25%    50%    75%  97.5% n_eff Rhat
+intercept      99.01    0.02 0.99  97.06  98.35  98.99  99.66 100.98  2391 1.00
+first_degree    6.05    0.03 0.97   4.19   5.38   6.03   6.70   8.02  1297 1.00
+second_degree   1.95    0.04 1.01   0.02   1.28   1.96   2.62   3.93   743 1.01
+sigma         149.97    0.03 1.02 147.96 149.29 149.92 150.69 151.96  1505 1.00
+
+Samples were drawn using NUTS(diag_e) at Thu May 16 09:38:48 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Now this looks much better! The chains converge towards each other as
+they should, and the generated data from the parameters looks quite
+close to the actual data. Let's run our model for real this time.
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y,run_estimation=1,it_mean=mean_intercept,it_sd=1,f_degree_mean=mean_first,s_degree_mean=mean_sec,degree_sd=1,sigma_mean=150,sigma_sd=1)
+
+fit = sampling(sm,data=data, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+y_sim = extract(fit, pars = "y_sim")
+mean(df$y)
+mean(y_sim$y_sim)
+print(fit,pars=c("intercept","first_degree","second_degree","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+[1] 6798.004
+
+[1] 6797.554
+
+Inference for Stan model: 991da9db6de658e6de861ff8730595aa.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                mean se_mean   sd   2.5%    25%    50%    75%  97.5% n_eff Rhat
+intercept      99.05    0.03 1.01  97.10  98.38  99.01  99.74 101.12  1346 1.00
+first_degree    6.06    0.02 0.42   5.24   5.79   6.05   6.33   6.88   738 1.01
+second_degree   2.00    0.00 0.01   1.99   2.00   2.00   2.00   2.01   715 1.01
+sigma         150.09    0.03 0.97 148.24 149.44 150.06 150.76 152.06  1148 1.00
+
+Samples were drawn using NUTS(diag_e) at Thu May 16 09:43:19 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+And now with the data taken in account, the found parameters are much
+more accurate than before, and this shows in the generated data y-sim.
