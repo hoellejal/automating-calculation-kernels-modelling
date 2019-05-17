@@ -1,6 +1,4 @@
 * Tasks
-** TODO Try with more difficult models:  with a polynomial coefficient, with heterogeneity...
-   - For the second, it'd be better to have a model much like dgemm
-     where y depends on a combinaison of M*N*K and M*N, M*K, N*K
+** TODO Try with more difficult models: with heterogeneity...
    - For the third, we need to have several coefficients and intercepts
      (and perhaps noise, probably will do later in a 4th experiment)

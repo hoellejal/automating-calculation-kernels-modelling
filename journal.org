@@ -2406,3 +2406,92 @@ context.
   cases (cases where the CPU was not going to overheat), it's not an
   important loss in performance so it's worth reducing the frequency
   just in case.
+*** 2019-05-17 friday
+**** Started to look at the model of dgemm with the provided data
+Read [[https://github.com/Ezibenroc/calibration_analysis/blob/master/dahu/blas/dgemm_heterogeneous_model.ipynb ][Tom's analysis on the heterogenous model of dgemm]].
+
+First we import the data from the dgemm.csv file.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+#we change the type of the data from int to numeric to avoid int overflow when we compute m*n*k
+
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+data$mn = data$m * data$n
+data$mk = data$m * data$k
+data$nk = data$m * data$k
+
+head(data)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Le chargement a nécessité le package : ggplot2
+Registered S3 methods overwritten by 'ggplot2':
+  method         from 
+  [.quosures     rlang
+  c.quosures     rlang
+  print.quosures rlang
+Le chargement a nécessité le package : StanHeaders
+rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
+For execution on a local, multicore CPU with excess RAM we recommend calling
+options(mc.cores = parallel::detectCores()).
+To avoid recompilation of unchanged Stan programs, we recommend calling
+rstan_options(auto_write = TRUE)
+
+Attachement du package : ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+ 
+     m    n    k  duration cpu        mnk      mn       mk       nk
+1  378 7640 2427 0.4859466  20 7008981840 2887920   917406   917406
+2  378 7640 2427 0.4861293  20 7008981840 2887920   917406   917406
+3  378 7640 2427 0.4868529  20 7008981840 2887920   917406   917406
+4 9441  640 1160 0.4551385  20 7008998400 6042240 10951560 10951560
+5 9441  640 1160 0.4535278  20 7008998400 6042240 10951560 10951560
+6 9441  640 1160 0.4544535  20 7008998400 6042240 10951560 10951560
+#+end_example
+
+So we have our dataframe with the coefficients mnk, mn, mk and nk as
+well as the dgemm's run duration depending on the coefficients and the
+cpu.
+
+#+begin_src R :results output :session *R* :exports both
+ggplot(sample_n(data, 10000), aes(x=mnk, y=duration, color='factor(cpu)')) + geom_point(alpha=0.3) +geom_smooth(method='lm')
+#+end_src
+
+We can see on this graph that the majority of the data is between the
+values 0 and 2e+10 of mnk. We sample our data frame to keep only the
+data between these values.
+
+#+begin_src R :results output graphics :file ./images/dgemm_duration_on_mnk.png :exports both :width 600 :height 400 :session *R* 
+tmp=select(filter(data, data$mnk < 2e10),everything())
+
+ggplot(sample_n(tmp, 10000), aes(x=mnk, y=duration, color=factor(cpu))) + geom_point(alpha=0.3) +geom_smooth(method='lm')
+#+end_src
+
+#+RESULTS:
+[[file:./images/dgemm_duration_on_mnk.png]]
+
+Now we can easily find back the heterogeneity that Tom observed.
+Indeed, the duration of a dgemm run depends on a combinaison of the m,
+n and k parameters (the coefficients mn, mk and nk play a part too but
+we started with an easier model with only mnk), but also on the cpu.
+
+We'll start with a M_H-1/N_H-2 model, so a linear model with noise
+modeled by a polynomial function, with per-host estimations.
+
+
