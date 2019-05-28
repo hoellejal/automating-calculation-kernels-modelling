@@ -248,7 +248,7 @@ best way to improve artificial systems in the future.
   foreign to them. They do not process the relations between objects,
   they focus on pattern recognition.
 *** 2019-05-03 friday
-**** STARTED Read [[http://xcelab.net/rm/statistical-rethinking ][A Bayesian Course with examples in R and Stan]] by Richard McElreath :PAPER:STAN:
+**** STARTED Read [[http://xcelab.net/rm/statistical-rethinking ][A Bayesian Course with examples in R and Stan]] by Richard McElreath :PAPER:STATISTICS:STAN:
 :LOGBOOK:  
 - State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 16:42]
 - State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
@@ -341,7 +341,7 @@ best way to improve artificial systems in the future.
   between the outcome and the post-treatment variable. 
 
 ***** About overfitting and regularization
-**** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STAN:
+**** STARTED [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Listened to several lectures by Richard McElreath]] :VIDEO:STATISTICS:STAN:
 :LOGBOOK:  
 - State "STARTED"    from "INTERRUPTED" [2019-05-09 jeu. 17:08]
 - State "INTERRUPTED" from "STARTED"    [2019-05-06 lun. 18:52]
@@ -370,13 +370,13 @@ head(df)
 
 #+RESULTS:
 :  
-:    x          y
-: 1 53 -50.228060
-: 2 60 -66.521457
-: 3 26   4.949108
-: 4 18   2.624106
-: 5 15  24.501256
-: 6 24  -9.271574
+:    x           y
+: 1 71  -89.970034
+: 2 19   34.653228
+: 3 11   47.257220
+: 4 84 -105.552794
+: 5 34  -12.029547
+: 6 30   -2.636534
 
 #+begin_src R :results output graphics :file ./images/ex1_figure.png :exports both :width 600 :height 400 :session *R* 
 library(ggplot2)
@@ -384,7 +384,7 @@ ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3)
 #+end_src
 
 #+RESULTS:
-[[file:./images/figure.png]]
+[[file:./images/ex1_figure.png]]
 
 Then, we define a stan model to find our parameters (intercept,
 coefficient and sigma) that we now assume unknown 
@@ -424,22 +424,23 @@ print(fit)
 
 #+RESULTS:
 #+begin_example
+
 Inference for Stan model: ea4b5a288cf5f1d87215860103a9026e.
 8 chains, each with iter=500; warmup=250; thin=1; 
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
                 mean se_mean   sd     2.5%      25%      50%      75%    97.5%
-intercept      49.74    0.05 1.36    47.04    48.85    49.74    50.63    52.53
-coefficient    -2.00    0.00 0.02    -2.04    -2.01    -1.99    -1.98    -1.95
-sigma          15.19    0.01 0.47    14.31    14.88    15.18    15.49    16.13
-lp__        -1621.74    0.04 1.18 -1624.81 -1622.26 -1621.43 -1620.86 -1620.41
+intercept      49.34    0.04 1.36    46.78    48.43    49.33    50.26    52.09
+coefficient    -1.99    0.00 0.02    -2.04    -2.00    -1.99    -1.97    -1.94
+sigma          15.20    0.01 0.47    14.30    14.88    15.19    15.51    16.14
+lp__        -1621.01    0.05 1.27 -1624.18 -1621.57 -1620.68 -1620.06 -1619.56
             n_eff Rhat
-intercept     896 1.01
-coefficient   953 1.01
-sigma        1134 1.01
-lp__          763 1.00
+intercept    1217 1.01
+coefficient  1219 1.01
+sigma        1242 1.00
+lp__          718 1.01
 
-Samples were drawn using NUTS(diag_e) at Tue May  7 10:50:03 2019.
+Samples were drawn using NUTS(diag_e) at Mon May 27 14:29:54 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -453,28 +454,28 @@ stan_plot(fit)
 #+end_src
 
 #+RESULTS:
-[[file:./images/stan_plot.png]]
+[[file:./images/ex1_stan_plot.png]]
 
 #+begin_src R :results output graphics :file ./images/ex1_stan_trace.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit)
 #+end_src
 
 #+RESULTS:
-[[file:./images/stan_trace.png]]
+[[file:./images/ex1_stan_trace.png]]
 
 #+begin_src R :results output graphics :file ./images/ex1_stan_hist.png :exports both :width 600 :height 400 :session *R* 
 stan_hist(fit)
 #+end_src
 
 #+RESULTS:
-[[file:./images/stan_hist.png]]
+[[file:./images/ex1_stan_hist.png]]
 
 #+begin_src R :results output graphics :file ./images/ex1_stan_dens.png :exports both :width 600 :height 400 :session *R* 
 stan_dens(fit) #attention à la densité, elle n'est pas toujours pertinente
 #+end_src
 
 #+RESULTS:
-[[file:./images/stan_dens.png]]
+[[file:./images/ex1_stan_dens.png]]
 
 *** 2019-05-07 tuesday
 **** Search for a way to generate data once Stan has found the parameters :STAN:
@@ -2540,6 +2541,8 @@ generated quantities {
 sm = stan_model(model_code = modelString)
 #+end_src
 
+#+RESULTS:
+
 #+begin_src R :results output :session *R* :exports both
 t=sample_n(data,500) #We use only a sample of 500 values
 reg = lm(data=t, duration~mnk) 
@@ -2556,18 +2559,18 @@ lm(formula = duration ~ mnk, data = t)
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.07746 -0.01724 -0.01051  0.00349  0.42490 
+-0.07742 -0.01496 -0.00813  0.00475  0.33583 
 
 Coefficients:
              Estimate Std. Error t value Pr(>|t|)    
-(Intercept) 1.551e-02  2.642e-03    5.87 7.95e-09 ***
-mnk         6.597e-11  3.613e-13  182.56  < 2e-16 ***
+(Intercept) 1.462e-02  2.588e-03    5.65 2.71e-08 ***
+mnk         6.571e-11  3.866e-13  169.96  < 2e-16 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.03981 on 498 degrees of freedom
-Multiple R-squared:  0.9853,	Adjusted R-squared:  0.9852 
-F-statistic: 3.333e+04 on 1 and 498 DF,  p-value: < 2.2e-16
+Residual standard error: 0.0353 on 498 degrees of freedom
+Multiple R-squared:  0.9831,	Adjusted R-squared:  0.983 
+F-statistic: 2.889e+04 on 1 and 498 DF,  p-value: < 2.2e-16
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
@@ -2576,15 +2579,15 @@ fit = sampling(sm,data=dt, iter=500, chains=8)
 #+end_src
 
 #+RESULTS:
-#+begin_example
+#+begin_example 
 Warning messages:
-1: There were 1674 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+1: There were 1717 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
 http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
 2: Examine the pairs() plot to diagnose sampling problems
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit, digits=15)
 extracted=rstan::extract(fit)
 #+end_src
 
@@ -2595,21 +2598,21 @@ Inference for Stan model: 026d3a101ad7cfe8c65a4e6d7a90fbdf.
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
                    mean      se_mean           sd          2.5%           25%
-intercept         -0.83         0.55 1.100000e+00 -1.940000e+00 -1.510000e+00
-mu                 0.00         0.00 0.000000e+00  0.000000e+00  0.000000e+00
-sigma              0.93         0.48 9.500000e-01  1.400000e-01  2.300000e-01
-x_pos     5412939413.82 117372669.99 5.516384e+09  3.294752e+08  2.667571e+09
-y_sim     -149795272.93 267185524.55 1.229888e+10 -1.718214e+10 -1.190915e+09
-lp__         -148703.15     36982.72 7.403951e+04 -2.845500e+05 -1.777658e+05
+intercept  1.504111e-01 4.062348e-01 8.132832e-01 -9.823013e-01 -3.357801e-01
+mu         6.571400e-11 8.000000e-15 3.750000e-13  6.495500e-11  6.546400e-11
+sigma      1.227907e+00 6.971982e-01 1.395793e+00  2.296408e-01  3.116581e-01
+x_pos      5.338288e+09 1.026550e+08 4.567926e+09  6.676320e+08  2.325543e+09
+y_sim     -4.223652e+08 2.621214e+08 1.124476e+10 -2.937809e+10 -1.841169e+09
+lp__      -6.178564e+04 3.215719e+04 6.437879e+04 -1.971862e+05 -9.520017e+04
                     50%           75%         97.5% n_eff         Rhat
-intercept         -1.37         -0.46  1.380000e+00     4 1481693892.1
-mu                 0.00          0.00  0.000000e+00  2431          1.0
-sigma              0.45          1.31  2.590000e+00     4  974778898.6
-x_pos     5000025888.00 7666356180.00  9.989817e+09  2209          1.0
-y_sim        1070605.46 1282927474.23  1.710244e+10  2119          1.0
-lp__         -152089.61    -118441.00 -3.203520e+04     4     109399.8
+intercept -3.122313e-02  4.276527e-01  1.594935e+00     4 8.724664e+08
+mu         6.572500e-11  6.597000e-11  6.644800e-11  2247 9.994211e-01
+sigma      4.271844e-01  1.526354e+00  3.936863e+00     4 8.608280e+08
+x_pos      5.000026e+09  7.666454e+09  9.991562e+09  1980 1.001690e+00
+y_sim     -5.799446e+07  1.418074e+09  2.340147e+10  1840 9.998499e-01
+lp__      -2.279149e+04 -1.491921e+04 -1.177313e+04     4 1.017793e+05
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 10:25:46 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 15:01:42 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -2620,6 +2623,11 @@ to zero with no variance, which seems very surprising and probably
 incorrect. Likewise, there is obviously an issue with the generated
 data. The mean of y_sim should be between 0 and 1, since most of the
 values of duration are.
+
+EDIT: The reason why the mu coefficient (and on later tests the other
+coefficients as well) was equal to zero was because of a rounding of
+its value. To counter it, we have to add the option digit to the
+print.
 
 #+begin_src R :results output graphics :file ./images/trace_test_dgemm.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit,pars=c("intercept","mu","sigma"))
@@ -2725,15 +2733,13 @@ fit = sampling(sm,data=dt, iter=500, chains=8,control=list(adapt_delta=0.9, max_
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 66 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
-http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
-2: There were 7 chains where the estimated Bayesian Fraction of Missing Information was low. See
+1: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
-3: Examine the pairs() plot to diagnose sampling problems
+2: Examine the pairs() plot to diagnose sampling problems
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -2743,19 +2749,19 @@ Inference for Stan model: 61a0efffa5767e43bbea608c3c35d0c3.
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
                    mean      se_mean           sd          2.5%           25%
-intercept  5.300000e-01 3.800000e-01 7.600000e-01 -7.600000e-01  9.000000e-02
-mu         0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-sigma      0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-noise      2.430000e+00 1.270000e+00 2.550000e+00  1.800000e-01  3.800000e-01
-lp__      -2.981733e+19 3.931902e+19 7.871692e+19 -2.380303e+20 -1.303682e+17
-                    50%           75%         97.5% n_eff      Rhat
-intercept  5.100000e-01  1.250000e+00  1.500000e+00     4 664687.68
-mu         0.000000e+00  0.000000e+00  0.000000e+00     4     37.81
-sigma      0.000000e+00  0.000000e+00  0.000000e+00     4     56.14
-noise      8.500000e-01  4.880000e+00  6.920000e+00     4  14523.43
-lp__      -2.772723e+16 -1.255828e+16 -1.050919e+15     4    763.27
+intercept  3.531664e-01 3.892800e-01 7.793398e-01 -8.924872e-01 -2.539452e-01
+mu        -2.262480e-10 2.628420e-10 1.030852e-08  6.597700e-11  6.730800e-11
+sigma      5.229433e-05 1.072298e-05 4.419211e-05  1.310142e-05  2.219570e-05
+noise      4.083433e-01 1.118904e-01 2.240049e-01  1.679360e-01  2.247335e-01
+lp__      -6.531501e+16 2.435243e+16 1.398765e+17 -4.607655e+17 -6.626595e+16
+                    50%           75%         97.5% n_eff         Rhat
+intercept  3.624562e-01  9.344805e-01  1.574308e+00     4 3.994786e+06
+mu         6.772400e-11  6.819900e-11  6.924000e-11  1538 1.000987e+00
+sigma      4.229748e-05  6.898724e-05  1.819297e-04    17 1.502134e+00
+noise      3.644352e-01  4.851525e-01  8.737234e-01     4 2.810154e+06
+lp__      -2.491757e+16 -6.910786e+15 -2.613278e+15    33 1.209887e+00
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 10:33:07 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 15:37:59 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -2803,9 +2809,9 @@ fit = sampling(sm,data=dt, iter=500, chains=8,control=list(adapt_delta=0.99, max
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 1630 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
+1: There were 1671 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
-2: There were 23 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
+2: There were 34 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
 http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
 3: There were 6 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
@@ -2813,7 +2819,7 @@ http://mc-stan.org/misc/warnings.html#bfmi-low
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -2822,20 +2828,20 @@ Inference for Stan model: eab2140253d776bf0d3d3b28a210bbf6.
 8 chains, each with iter=500; warmup=250; thin=1; 
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
-              mean se_mean     sd     2.5%      25%      50%      75%    97.5%
-intercept     0.07    0.35   0.71    -1.05    -0.58     0.36     0.53     1.09
-mu            0.00    0.00   0.00     0.00     0.00     0.00     0.00     0.00
-sigma         0.00    0.00   0.00     0.00     0.00     0.00     0.00     0.00
-noise         1.52    0.59   1.17     0.36     0.66     0.95     2.23     3.89
-lp__      -3998.34  244.48 490.90 -4838.07 -4309.89 -3984.28 -3774.87 -3113.91
-          n_eff   Rhat
-intercept     4 789.54
-mu         1508   1.00
-sigma         4   5.88
-noise         4 539.28
-lp__          4  13.87
+                   mean      se_mean           sd          2.5%           25%
+intercept -2.569696e-01 6.598232e-01 1.320969e+00 -1.974464e+00 -1.253528e+00
+mu         6.832950e-10 1.286599e-09 4.545803e-08 -1.090251e-07 -1.035903e-08
+sigma      7.888101e-07 3.646713e-07 7.378537e-07  4.241160e-08  2.098605e-07
+noise      2.230022e+00 1.351280e+00 2.705279e+00  1.984302e-01  3.994403e-01
+lp__      -3.749007e+03 3.103105e+02 6.221434e+02 -4.462446e+03 -4.439525e+03
+                    50%           75%         97.5% n_eff        Rhat
+intercept -5.394311e-01  8.099665e-01  1.751192e+00     4 782.9242302
+mu        -3.226750e-10  1.197858e-08  1.095395e-07  1248   0.9996885
+sigma      4.633372e-07  1.726487e-06  1.785682e-06     4   7.2742745
+noise      6.909477e-01  3.061833e+00  8.232229e+00     4 404.1248208
+lp__      -3.823721e+03 -3.392409e+03 -2.645889e+03     4  19.9918769
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 10:40:05 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 15:52:18 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -2892,6 +2898,8 @@ model {
 sm = stan_model(model_code = modelString)
 #+end_src
 
+#+RESULTS:
+
 #+begin_src R :results output :session *R* :exports both
 t=sample_n(tmp,500)
 reg = lm(data=t, duration~mnk)
@@ -2901,9 +2909,9 @@ fit = sampling(sm,data=dt, iter=5100, warmup=1000, chains=8,control=list(adapt_d
 #+end_src
 
 #+RESULTS:
-#+begin_example 
+#+begin_example
 Warning messages:
-1: There were 2 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 1 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
 2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
@@ -2911,7 +2919,7 @@ http://mc-stan.org/misc/warnings.html#bfmi-low
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -2920,16 +2928,16 @@ Inference for Stan model: 55845b1a4a35f6aadfd4f4f5a12c737c.
 8 chains, each with iter=5100; warmup=1000; thin=1; 
 post-warmup draws per chain=4100, total post-warmup draws=32800.
 
-               mean      se_mean           sd          2.5%          25%
-mu     0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.00000e+00
-sigma  0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.00000e+00
-lp__  -1.298888e+14 7.369173e+13 2.373749e+14 -9.193152e+14 -1.70388e+14
-                50%           75%        97.5% n_eff    Rhat
-mu     0.000000e+00  0.000000e+00            0     4 1806.84
-sigma  0.000000e+00  0.000000e+00            0     7    2.43
-lp__  -1.961866e+13 -2.432762e+12 -57275772264    10    1.74
+               mean      se_mean           sd          2.5%           25%
+mu     6.700800e-11 3.400000e-14 6.489000e-12  6.567900e-11  6.654800e-11
+sigma  1.274686e-06 2.558771e-07 1.400233e-06  1.795740e-07  5.344737e-07
+lp__  -4.990499e+13 1.888952e+13 1.759958e+14 -2.961368e+14 -3.819235e+13
+                50%           75%         97.5% n_eff     Rhat
+mu     6.699800e-11  6.742900e-11  6.832100e-11 36035 0.999984
+sigma  6.479972e-07  1.656480e-06  4.612580e-06    30 1.324777
+lp__  -5.844517e+12 -3.976075e+12 -4.488306e+11    87 1.072626
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 10:45:16 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 15:56:42 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -3020,7 +3028,7 @@ increase adapt-delta, max-treedepth and the number of iteration to get
 more information. Still, we get the same warnings.
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -3030,17 +3038,17 @@ Inference for Stan model: bd64ccd38cfd75adfa383e1d11cf788d.
 post-warmup draws per chain=4100, total post-warmup draws=32800.
 
                    mean      se_mean           sd          2.5%           25%
-intercept  3.500000e-01 7.200000e-01 1.440000e+00 -1.400000e+00 -1.240000e+00
-mu         0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-sigma      0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-lp__      -1.870863e+14 4.864573e+13 9.995269e+13 -3.192762e+14 -2.848535e+14
-                    50%           75%        97.5% n_eff  Rhat
-intercept  4.300000e-01  1.830000e+00  1.93000e+00     4 37.35
-mu         0.000000e+00  0.000000e+00  0.00000e+00  6788  1.00
-sigma      0.000000e+00  0.000000e+00  0.00000e+00     5  3.64
-lp__      -1.704914e+14 -1.296263e+14 -5.94114e+12     4 10.62
+intercept -6.141436e-01 2.791332e-01 5.633156e-01 -1.795303e+00 -1.014738e+00
+mu         7.529700e-11 8.050000e-12 2.162900e-11  5.500600e-11  6.455700e-11
+sigma      2.494379e-07 1.167940e-07 2.692559e-07  5.413230e-10  4.657374e-08
+lp__      -6.103574e+13 3.382827e+13 7.032100e+13 -2.756563e+14 -9.292872e+13
+                    50%           75%         97.5% n_eff      Rhat
+intercept -4.353619e-01 -2.959864e-01  3.180765e-01     4 10.836042
+mu         6.982400e-11  7.563500e-11  1.441850e-10     7  1.917048
+sigma      1.740066e-07  3.390582e-07  8.747806e-07     5  3.248281
+lp__      -2.375979e+13 -8.925277e+12 -6.984745e+12     4  5.472502
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 10:49:19 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:13:43 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -3051,7 +3059,7 @@ stan_trace(fit)
 #+end_src
 
 #+RESULTS:
-[[file:./trace_dgemm_simulated_data.png]]
+[[file:./images/trace_dgemm_simulated_data_priors.png]]
 
 With priors, the results aren't that much different from the ones with
 the real data.
@@ -3085,20 +3093,18 @@ fit = sampling(sm,data=data, iter=500, chains=8, control=list(adapt_delta=0.9, m
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 897 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 624 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
-2: There were 1 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
-http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
-3: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
+2: There were 7 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
-4: Examine the pairs() plot to diagnose sampling problems
+3: Examine the pairs() plot to diagnose sampling problems
 #+end_example
 
 We had to make a fit with only 500 iterations this time, otherwise it
 takes too long.
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -3107,18 +3113,18 @@ Inference for Stan model: 6aecb669cd764d58320b4a59fdaa7f61.
 8 chains, each with iter=500; warmup=250; thin=1; 
 post-warmup draws per chain=250, total post-warmup draws=2000.
 
-              mean se_mean     sd     2.5%     25%      50%      75%    97.5%
-intercept    -0.37    0.48   0.96    -2.29    -0.8    -0.42     0.32     0.99
-mu            0.00    0.00   0.00     0.00     0.0     0.00     0.00     0.00
-sigma         0.00    0.00   0.00     0.00     0.0     0.00     0.00     0.00
-lp__      -5482.55  173.80 352.25 -6030.16 -5836.9 -5546.45 -5252.62 -4954.71
-          n_eff   Rhat
-intercept     4 193.71
-mu         1296   1.00
-sigma         4   5.54
-lp__          4   7.49
+                   mean      se_mean           sd          2.5%           25%
+intercept  3.102190e-01 2.983665e-01 5.973307e-01 -7.105154e-01 -3.898865e-02
+mu        -4.236798e-09 6.341455e-08 2.341009e-06 -5.081258e-06 -8.691229e-07
+sigma      4.030542e-05 1.490636e-05 2.996813e-05  1.094829e-05  1.902506e-05
+lp__      -5.816910e+03 1.733226e+02 3.485917e+02 -6.384650e+03 -6.087584e+03
+                    50%           75%         97.5% n_eff        Rhat
+intercept  3.449164e-01  5.428088e-01  1.479953e+00     4 3825.218823
+mu        -4.182785e-08  8.355895e-07  5.608310e-06  1363    1.002042
+sigma      2.896082e-05  5.571756e-05  9.762570e-05     4   14.749600
+lp__      -5.777482e+03 -5.568095e+03 -5.293072e+03     4   12.192077
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 11:00:00 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:20:05 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -3191,7 +3197,7 @@ fit = sampling(sm,data=data, iter=5100, warmup=1000, chains=8, control=list(adap
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 1 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
+1: There were 3 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
 http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
 2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
@@ -3199,7 +3205,7 @@ http://mc-stan.org/misc/warnings.html#bfmi-low
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit)
+print(fit,digits=15)
 #+end_src
 
 #+RESULTS:
@@ -3209,17 +3215,17 @@ Inference for Stan model: bd64ccd38cfd75adfa383e1d11cf788d.
 post-warmup draws per chain=4100, total post-warmup draws=32800.
 
                    mean      se_mean           sd          2.5%           25%
-intercept -1.500000e-01 5.900000e-01 1.180000e+00 -1.540000e+00 -1.180000e+00
-mu         0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-sigma      0.000000e+00 0.000000e+00 0.000000e+00  0.000000e+00  0.000000e+00
-lp__      -1.325106e+14 4.687167e+13 9.394114e+13 -3.284253e+14 -1.965313e+14
-                    50%           75%         97.5% n_eff   Rhat
-intercept -1.900000e-01  6.200000e-01  1.900000e+00     4 111.21
-mu         0.000000e+00  0.000000e+00  0.000000e+00     4  72.09
-sigma      0.000000e+00  0.000000e+00  0.000000e+00     4  18.31
-lp__      -1.090083e+14 -6.464247e+13 -2.825113e+13     4  34.26
+intercept -2.267105e-01 4.687930e-01 9.506106e-01 -1.917152e+00 -8.403034e-01
+mu         2.460500e-10 1.057454e-09 2.130387e-09 -2.234471e-09 -2.203943e-09
+sigma      7.125636e-07 9.323223e-08 2.113287e-07  3.112603e-07  5.568434e-07
+lp__      -9.540276e+13 4.951747e+13 1.026864e+14 -3.440622e+14 -9.243007e+13
+                    50%           75%         97.5% n_eff      Rhat
+intercept -1.261219e-01  7.176045e-01  9.511613e-01     4  9.902207
+mu         6.989710e-10  2.359326e-09  2.375085e-09     4 18.033746
+sigma      7.227470e-07  8.342450e-07  1.054829e-06     5  3.661025
+lp__      -6.035752e+13 -3.286637e+13 -5.001282e+12     4  6.982544
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 11:04:50 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:23:16 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -3237,6 +3243,7 @@ theory that stan is unable to precisely find coefficients with low
 values even with simple models seems more and more plausible.
 ***** A test with the first linear model and small coefficients
 ****** Without priors
+
 #+begin_src R :results output :session *R* :exports both
 library(rstan)
 generate_dataset=function(intercept, mu, N, min_x=1, max_x=100, sigma){
@@ -3277,7 +3284,7 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+end_src
 
 #+begin_src R :results output :session *R* :exports both
-print(fit,pars=c("intercept","mu","sigma"))
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
 #+end_src
 
 #+RESULTS:
@@ -3286,12 +3293,16 @@ Inference for Stan model: 6c53f653112405a28b1addf711377071.
 8 chains, each with iter=1000; warmup=500; thin=1; 
 post-warmup draws per chain=500, total post-warmup draws=4000.
 
-          mean se_mean   sd 2.5%  25%  50%  75% 97.5% n_eff Rhat
-intercept 7.91    0.02 0.91 6.16 7.31 7.92 8.51  9.69  2859    1
-mu        7.00    0.00 0.09 6.82 6.94 7.00 7.06  7.18  2560    1
-sigma     1.85    0.00 0.06 1.75 1.81 1.85 1.89  1.97  3471    1
+              mean     se_mean         sd     2.5%      25%      50%      75%
+intercept 7.647600 0.014967366 0.79401695 6.117863 7.091200 7.641664 8.186877
+mu        7.036958 0.001692130 0.09073839 6.856957 6.976358 7.036628 7.098632
+sigma     1.853676 0.001064808 0.05973399 1.742868 1.812748 1.853186 1.892427
+             97.5% n_eff      Rhat
+intercept 9.223198  2814 0.9994819
+mu        7.214872  2876 0.9994882
+sigma     1.978509  3147 1.0027485
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 11:10:50 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:25:54 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
@@ -3326,7 +3337,7 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 857 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 971 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
 2: There were 7 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
@@ -3334,7 +3345,7 @@ http://mc-stan.org/misc/warnings.html#bfmi-low
 #+end_example
 
 #+begin_src R :results output :session *R* :exports both
-print(fit,pars=c("intercept","mu","sigma"))
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
 #+end_src
 
 #+RESULTS:
@@ -3343,19 +3354,20 @@ Inference for Stan model: 6c53f653112405a28b1addf711377071.
 8 chains, each with iter=1000; warmup=500; thin=1; 
 post-warmup draws per chain=500, total post-warmup draws=4000.
 
-          mean se_mean sd 2.5% 25% 50% 75% 97.5% n_eff Rhat
-intercept    0       0  0    0   0   0   0     0   581 1.00
-mu           0       0  0    0   0   0   0     0  1521 1.00
-sigma        0       0  0    0   0   0   0     0     5 3.46
+                  mean      se_mean           sd         2.5%          25%
+intercept 7.667357e-04 6.504060e-08 1.934812e-06 7.629936e-04 7.659316e-04
+mu        6.844724e-06 4.583065e-09 2.314504e-07 6.369520e-06 6.748218e-06
+sigma     3.868036e-06 1.291103e-06 3.109356e-06 1.908412e-06 2.135792e-06
+                   50%          75%        97.5% n_eff      Rhat
+intercept 7.667782e-04 7.675560e-04 7.703698e-04   885 1.0009571
+mu        6.842989e-06 6.941767e-06 7.317097e-06  2550 0.9994663
+sigma     2.515340e-06 4.275463e-06 1.123641e-05     6 2.3392721
 
-Samples were drawn using NUTS(diag_e) at Thu May 23 11:14:54 2019.
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:27:42 2019.
 For each parameter, n_eff is a crude measure of effective sample size,
 and Rhat is the potential scale reduction factor on split chains (at 
 convergence, Rhat=1).
 #+end_example
-
-As soon as we use too small values, the print of the fit shows zero
-even if the value found (as seen in the trace) is different from zero.
 
 #+begin_src R :results output graphics :file ./images/trace_linear_model_small_values_priors.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit,pars=c("intercept","mu","sigma"))
@@ -3364,8 +3376,9 @@ stan_trace(fit,pars=c("intercept","mu","sigma"))
 #+RESULTS:
 [[file:./images/trace_linear_model_small_values_priors.png]]
 
-This time, the chains no longer converge for sigma. Now we try by
-taking the real coefficients:
+This time, the chains no longer converge for sigma, even though the
+value found seems close enough to the truth. Now we try by taking the
+real coefficients: 
 
 #+begin_src R :results output :session *R* :exports both
 generate_dataset=function(intercept, mu, N, min_x=1, max_x=100, sigma){
@@ -3386,11 +3399,36 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 1119 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 1186 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
 2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 6c53f653112405a28b1addf711377071.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+                  mean      se_mean           sd          2.5%           25%
+intercept 7.400348e-07 8.844799e-08 2.129813e-06 -3.267757e-06  4.382780e-08
+mu        4.219793e-09 6.283186e-09 2.615570e-07 -4.642814e-07 -9.867937e-08
+sigma     3.968054e-06 1.455374e-06 3.502562e-06  4.796358e-07  2.085801e-06
+                   50%          75%        97.5% n_eff     Rhat
+intercept 7.616282e-07 1.518633e-06 4.440404e-06   580 1.013834
+mu        6.300120e-10 9.383928e-08 5.091366e-07  1733 1.001520
+sigma     3.356702e-06 4.682584e-06 1.537264e-05     6 2.470264
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:28:54 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_model_smallest_values_priors.png :exports both :width 600 :height 400 :session *R* 
@@ -3400,10 +3438,12 @@ stan_trace(fit,pars=c("intercept","mu","sigma"))
 #+RESULTS:
 [[file:./images/trace_linear_model_smallest_values_priors.png]]
 
-We can conclude that the chains converge less and less the smaller our
-coefficients are, in an analysis without priors.
+We can conclude that the chains converge less and less and the results
+get more and more inaccurate the smaller our coefficients are, in an
+analysis without priors.
 
 ****** With priors
+
 #+begin_src R :results output :session *R* :exports both
 library(rstan)
 generate_dataset=function(intercept, mu, N, min_x=1, max_x=100, sigma){
@@ -3446,10 +3486,37 @@ generated quantities {
 sm = stan_model(model_code = modelString)
 #+end_src
 
+#+RESULTS:
+
 #+begin_src R :results output :session *R* :exports both
 data = list(N=nrow(df),mnk=df$mnk,duration=df$duration,it_mean=7.661272,it_sd=7.661272e-01,mu_mean=6.862693,mu_sd=6.862693e-01,sigma_mean=1.895320,sigma_sd=1.895320e-01)
 fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, max_treedepth=15))
 #+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 4288276d79fabf2e3c6527abfc683c05.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+              mean      se_mean         sd     2.5%      25%      50%      75%
+intercept 7.652102 0.0083744530 0.44089146 6.805078 7.349009 7.648880 7.941100
+mu        6.784125 0.0015773987 0.08542805 6.617932 6.726332 6.784802 6.840460
+sigma     1.803864 0.0009319497 0.05526949 1.696784 1.767061 1.803639 1.839666
+             97.5% n_eff     Rhat
+intercept 8.531703  2772 1.000523
+mu        6.950301  2933 1.000465
+sigma     1.916008  3517 1.000373
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:34:13 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_model_normal_values_priors.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit,pars=c("intercept","mu","sigma"))
@@ -3478,11 +3545,36 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 679 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 266 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
 2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 4288276d79fabf2e3c6527abfc683c05.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+                  mean      se_mean           sd         2.5%          25%
+intercept 7.639708e-04 1.595381e-06 1.878662e-05 7.144829e-04 7.612581e-04
+mu        6.869342e-06 9.534174e-09 4.971330e-07 5.855977e-06 6.575348e-06
+sigma     3.059329e-05 1.799649e-05 3.742901e-05 3.812280e-06 7.213205e-06
+                   50%          75%        97.5% n_eff     Rhat
+intercept 7.650721e-04 7.690010e-04 8.023561e-04   139 1.093105
+mu        6.871389e-06 7.166638e-06 7.872845e-06  2719 1.004060
+sigma     1.583788e-05 2.918923e-05 1.272126e-04     4 7.638276
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:38:58 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_model_small_values_priors.png :exports both :width 600 :height 400 :session *R* 
@@ -3514,11 +3606,36 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 214 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
-http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
-2: There were 7 chains where the estimated Bayesian Fraction of Missing Information was low. See
+1: There were 1 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 4288276d79fabf2e3c6527abfc683c05.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+                   mean      se_mean           sd          2.5%           25%
+intercept  4.813463e-01 5.856872e-01 1.178049e+00 -1.283666e+00 -5.717404e-01
+mu        -8.205100e-11 8.178180e-10 1.730782e-09 -2.293373e-09 -1.302557e-09
+sigma      1.106099e-06 1.619282e-07 5.537407e-07  4.153059e-07  7.820781e-07
+                    50%          75%        97.5% n_eff      Rhat
+intercept  9.067481e-01 1.265058e+00 1.845933e+00     4 11.781661
+mu        -7.152190e-10 1.779412e-09 2.426026e-09     4  4.923957
+sigma      9.568483e-07 1.255968e-06 2.213947e-06    12  1.858659
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:40:26 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_model_smallest_values_priors.png :exports both :width 600 :height 400 :session *R* 
@@ -3530,11 +3647,12 @@ stan_trace(fit,pars=c("intercept","mu","sigma"))
 
 The surprising part here is that adding a prior when the coefficients
 are really small seems to make the convergence of the chains harder,
-despite the accuracy of the prior in this case. Thus, the problem we
-face is the following: how to make precise analysis in stan with small
-values? Considering the problem doesn't seem linked to the complexity
-of the model, as we've tried also with a noise of normal distribution
-and it didn't change anything. 
+and to induce results farther from their actual value, despite the
+accuracy of the prior. Thus, the problem we face is the following: how
+to make precise analysis in stan with small values? Considering the
+problem doesn't seem linked to the complexity of the model, as we've
+tried also with a noise of normal distribution and it didn't change
+anything.
 
 ***** A test with the first linear model and normally distributed noise
 This test will be without priors as we've seen they don't necessarily
@@ -3583,15 +3701,40 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.999
 #+end_src
 
 #+RESULTS:
-#+begin_example
+#+begin_example 
 Warning messages:
-1: There were 1142 divergent transitions after warmup. Increasing adapt_delta above 0.999 may help. See
+1: There were 744 divergent transitions after warmup. Increasing adapt_delta above 0.999 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
-2: There were 6 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
+2: There were 85 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
 http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
 3: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 4: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 6c53f653112405a28b1addf711377071.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+                  mean      se_mean           sd         2.5%          25%
+intercept 7.652839e-04 1.676923e-08 6.671097e-07 7.641304e-04 7.650775e-04
+mu        6.897411e-06 1.160137e-09 5.954334e-08 6.777433e-06 6.875426e-06
+sigma     9.459901e-07 2.238896e-07 7.849776e-07 1.778151e-07 4.290312e-07
+                   50%          75%        97.5% n_eff     Rhat
+intercept 7.652870e-04 7.654885e-04 7.665026e-04  1583 1.005037
+mu        6.898233e-06 6.921563e-06 7.012984e-06  2634 1.000710
+sigma     7.963216e-07 1.111225e-06 2.712883e-06    12 1.465876
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:52:47 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_normal_small.png :exports both :width 600 :height 400 :session *R* 
@@ -3599,7 +3742,7 @@ stan_trace(fit,pars=c("intercept","mu","sigma"))
 #+end_src
 
 #+RESULTS:
-[[file:./trace_linear_normal.png]]
+[[file:./images/trace_linear_normal_small.png]]
 
 Exactly as before, the chains don't converge for sigma, despite having
 a simpler model.
@@ -3623,11 +3766,36 @@ fit = sampling(sm,data=data, iter=1000, chains=8, control=list(adapt_delta=0.9, 
 #+RESULTS:
 #+begin_example
 Warning messages:
-1: There were 1214 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
+1: There were 1248 divergent transitions after warmup. Increasing adapt_delta above 0.9 may help. See
 http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
 2: There were 8 chains where the estimated Bayesian Fraction of Missing Information was low. See
 http://mc-stan.org/misc/warnings.html#bfmi-low 
 3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 6c53f653112405a28b1addf711377071.
+8 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=4000.
+
+                  mean      se_mean           sd          2.5%           25%
+intercept 6.334967e-07 9.374760e-08 1.948634e-06 -3.511208e-06 -2.780692e-07
+mu        4.279249e-09 5.213525e-09 2.269370e-07 -4.428789e-07 -1.103004e-07
+sigma     4.106003e-06 1.012670e-06 2.249853e-06  9.290305e-07  2.617086e-06
+                   50%          75%        97.5% n_eff     Rhat
+intercept 6.842971e-07 1.579134e-06 4.764106e-06   432 1.023165
+mu        5.220629e-09 1.080350e-07 4.888979e-07  1895 1.003868
+sigma     4.374194e-06 4.682763e-06 8.107355e-06     5 2.954315
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 16:55:12 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_linear_normal_smallest.png :exports both :width 600 :height 400 :session *R* 
@@ -3642,3 +3810,234 @@ still converge more or less for the intercept and the mu
 coefficient. So the quality of the fit depends slightly on the
 simplicity of the model, but still the small values are clearly an
 issue for stan.
+*** 2019-05-24 friday
+**** Some solutions to correct the loss of precision with small parameters
+A first solution would be to make a non centered parameterisation, so
+the sampler would find more accurate results.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+
+generate_dataset=function(intercept, mu, N, min_x=1, max_x=100, sigma){
+    mnk = sample(min_x:max_x,N,replace=T) 
+    duration = mu * mnk + intercept + rnorm(N, sd=sigma*mnk)
+    df = data.frame(mnk,duration)
+    return(df)
+}
+df=generate_dataset(7.661272e-07,6.862693e-11, 1000, sigma=1.895320e-12)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] mnk;
+    vector<lower=0>[N] duration;
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+}
+parameters {
+    real intercept_raw;
+    real mu_raw;
+    real<lower=0> sigma_raw;
+}
+transformed parameters {
+    real intercept = it_mean + intercept_raw * it_sd;
+    real mu = mu_mean + mu_raw * mu_sd;
+    real sigma = sigma_mean + sigma_raw * sigma_sd;
+}
+model {
+   intercept_raw ~ normal(0,1);
+   mu_raw ~ normal(0,1);
+   sigma_raw ~ normal(0,1);
+   duration ~ normal(mu*mnk+intercept, sigma);
+}"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),mnk=df$mnk,duration=df$duration,it_mean=7.661272e-07,it_sd=7.661272e-08,mu_mean=6.862693e-11,mu_sd=6.862693e-12,sigma_mean=1.895320e-12,sigma_sd=1.895320e-13)
+
+fit = sampling(sm,data=data, iter=5000, warmup=1000, chains=8, control=list(adapt_delta=0.99, max_treedepth=15))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Warning messages:
+1: There were 192 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 15. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+2: There were 7 chains where the estimated Bayesian Fraction of Missing Information was low. See
+http://mc-stan.org/misc/warnings.html#bfmi-low 
+3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+We gave the same priors as before, and followed stan's warnings to
+increase adapt-delta, max-treedepth and the number of iteration to get
+more information. Still, we get the same warnings.
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 3137d51cccd536c33529682acca3446d.
+8 chains, each with iter=5000; warmup=1000; thin=1; 
+post-warmup draws per chain=4000, total post-warmup draws=32000.
+
+                  mean   se_mean         sd         2.5%          25%
+intercept 7.661317e-07 8.783e-12 3.3081e-11 7.661211e-07 7.661234e-07
+mu        6.861700e-11 1.700e-13 6.4200e-13 6.573100e-11 6.875200e-11
+sigma     1.720600e-11 3.849e-12 1.0970e-11 1.994000e-12 3.697000e-12
+                  50%          75%        97.5% n_eff     Rhat
+intercept 7.66124e-07 7.661249e-07 7.662804e-07    14 2.321179
+mu        6.87670e-11 6.877700e-11 6.881700e-11    14 2.322790
+sigma     2.61820e-11 2.630600e-11 2.645800e-11     8 2.924352
+
+Samples were drawn using NUTS(diag_e) at Fri May 24 11:49:50 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_non_centered_parameterisation.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("intercept","mu","sigma"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_non_centered_parameterisation.png]]
+
+Indeed, the results are much closer to the real parameters and appear
+reasonable. Also the traces still don't show a full convergence, but a
+much better one than before.
+
+**** Remade all the previous tests without the rounding on the fit's printing
+*** 2019-05-27 monday
+**** STARTED Read Bayesian Data Analysis by Andrew Gelman, John B. Carlin and four other authors :PAPER:STATISTICS:
+**** STARTED Read the slides of the Polaris Bootcamp talks
+**** Remade dgemm's M-1 N-2 model with a non centered parameterisation
+As per advices from the stan forum, we rewrote the dgemm's model in a
+different way, with transformed parameters, to help with the sampling.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] mnk;
+    vector[N] duration;
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    real intercept_raw;
+    real mu_raw;
+    real<lower=0> sigma_raw;
+    real<lower=0> noise_raw;
+}
+transformed parameters {
+    real intercept = it_mean + intercept_raw * it_sd;
+    real mu = mu_mean + mu_raw * mu_sd;
+    real sigma = sigma_mean + sigma_raw * sigma_sd;
+    real noise = n_mean + noise_raw * n_sd;
+}
+model {
+    intercept_raw ~ normal(0,1);
+    mu_raw ~ normal(0,1);
+    sigma_raw ~ normal(0,1);
+    noise_raw ~ normal(0,1);
+    duration ~ normal(mu*mnk+intercept, sigma*mnk+noise);
+}
+
+generated quantities {
+  real x_pos = mnk[categorical_rng(rep_vector(1,N) / N)];
+  real y_sim= normal_rng(mu*x_pos+intercept, sigma*x_pos+noise);
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t=sample_n(tmp,500)
+dt = list(N=500,mnk=t$mnk,duration=t$duration,it_mean=7.661272e-07,it_sd=7.661272e-08,mu_mean=6.862693e-11,mu_sd=6.862693e-12,sigma_mean=1.895320e-12,sigma_sd=1.895320e-13,n_mean=7.462142e-07, n_sd=7.462142e-08)
+#As usual, we use the values of the default case in Tom's analysis as prior
+
+fit = sampling(sm,data=dt, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 2052d8b2e3aa5f2928b46819f13fa8ff.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                  mean      se_mean           sd         2.5%          25%
+intercept 7.647913e-07 1.665034e-09 7.499101e-08 6.217157e-07 7.140399e-07
+mu        6.982500e-11 6.000000e-15 2.460000e-13 6.932000e-11 6.966600e-11
+sigma     5.349000e-12 2.000000e-15 9.700000e-14 5.166000e-12 5.284000e-12
+noise     8.059263e-07 1.181056e-09 4.510582e-08 7.484906e-07 7.709575e-07
+                   50%          75%        97.5% n_eff      Rhat
+intercept 7.658860e-07 8.167262e-07 9.135431e-07  2028 0.9989287
+mu        6.983400e-11 6.998700e-11 7.030700e-11  1841 1.0034719
+sigma     5.348000e-12 5.408000e-12 5.542000e-12  2028 1.0016055
+noise     7.966443e-07 8.344683e-07 9.117214e-07  1459 1.0013814
+
+Samples were drawn using NUTS(diag_e) at Tue May 28 09:24:05 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_dgemm_corrected.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit,pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_dgemm_corrected.png]]
+
+The results are really close to the priors, and the chains converge in
+the expected way.
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_generated = data.frame(mnk=extracted$x_pos, duration=extracted$y_sim, origin='generated')
+t_generated = t_generated[sample(nrow(t_generated), nrow(t)), ]
+t=select(t,c("mnk","duration"))
+t$origin = 'initial'
+new_t = rbind(t, t_generated)
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/generated_quantities_dgemm_corrected.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_quantities_dgemm_corrected.png]]
+
+The generated quantities are very close to our data. Some points are
+missing, but that is because of the simplicity of our model (we need
+to consider the mn, mk and nk coefficients).
