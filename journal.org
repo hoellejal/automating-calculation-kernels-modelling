@@ -2688,6 +2688,32 @@ data$mnk=data$m * data$n * data$k
 tmp=select(filter(data, data$mnk < 2e10),everything())
 #+end_src
 
+#+RESULTS:
+#+begin_example
+Le chargement a nécessité le package : ggplot2
+Registered S3 methods overwritten by 'ggplot2':
+  method         from 
+  [.quosures     rlang
+  c.quosures     rlang
+  print.quosures rlang
+Le chargement a nécessité le package : StanHeaders
+rstan (Version 2.18.2, GitRev: 2e1f913d3ca3)
+For execution on a local, multicore CPU with excess RAM we recommend calling
+options(mc.cores = parallel::detectCores()).
+To avoid recompilation of unchanged Stan programs, we recommend calling
+rstan_options(auto_write = TRUE)
+
+Attachement du package : ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+#+end_example
+
 #+begin_src R :results output :session *R* :exports both
 modelString = "data {
     int<lower=0> N;
@@ -4326,6 +4352,468 @@ ggplot(new_t, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
 
 #+RESULTS:
 [[file:./images/generated_quantities_dgemm_m-2_second_test.png]]
+
 There doesn't seem to be much difference between the two, but it might
 be more correct to use different observations of mu_raw and sigma_raw
 for the different coefficients.
+
+EDIT: A talk with Tom confirmed this model is more correct, not only
+because there shouldn't be the same mu_raw and sigma_raw for every
+coefficient, but also because visually, this model covers more initial
+data, and generates less observations where there weren't any.
+*** 2019-05-29 wednesday
+**** STARTED Made a M_H-1 N_H-2 model for dgemm
+***** The model, a test with two CPU
+****** With the same prior for everyone
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts; //the number of hosts/CPUs
+    matrix[hosts,N] mnk; //we have the same number of mnk and duration observations for each host
+    matrix[hosts,N] duration;
+    real it_mean; //for now we consider using the same prior for every host
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+    for(i in 1:hosts){
+      intercept[i]=it_mean + intercept_raw[i] * it_sd;
+      mu[i]=mu_mean + mu_raw[i] * mu_sd;
+      sigma[i]=sigma_mean + sigma_raw[i] * sigma_sd;
+      noise[i]= n_mean + noise_raw[i] * n_sd;
+    }
+}
+model {
+    for(i in 1:hosts){
+      intercept_raw[i] ~ normal(0,1);
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      noise_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t2=sample_n(select(filter(tmp, tmp$cpu==2), everything()),500)
+t4=sample_n(select(filter(tmp, tmp$cpu==4), everything()),500)
+
+dt = list(N=500,hosts=2,mnk=rbind(t2$mnk,t4$mnk),duration=rbind(t2$duration,t4$duration),it_mean=7.661272e-07,it_sd=7.661272e-08,mu_mean=6.862693e-11,mu_sd=6.862693e-12,sigma_mean=1.895320e-12,sigma_sd=1.895320e-13,n_mean=7.462142e-07, n_sd=7.462142e-08)
+
+fit = sampling(sm,data=dt, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: e2a3c492674675bfaf628141eab8240d.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                     mean      se_mean           sd         2.5%          25%
+intercept[1] 7.677801e-07 1.455665e-09 7.648153e-08 6.207045e-07 7.144779e-07
+intercept[2] 7.577541e-07 1.291884e-09 7.530550e-08 6.123789e-07 7.074350e-07
+mu[1]        7.027000e-11 4.000000e-15 2.130000e-13 6.986600e-11 7.013200e-11
+mu[2]        6.887200e-11 4.000000e-15 2.330000e-13 6.839400e-11 6.872200e-11
+sigma[1]     4.634000e-12 1.000000e-15 9.300000e-14 4.446000e-12 4.571000e-12
+sigma[2]     5.317000e-12 1.000000e-15 9.300000e-14 5.143000e-12 5.253000e-12
+noise[1]     7.424895e-07 1.283709e-09 7.598378e-08 5.971960e-07 6.907532e-07
+noise[2]     7.359063e-07 1.223931e-09 7.261507e-08 5.941192e-07 6.876684e-07
+                      50%          75%        97.5% n_eff      Rhat
+intercept[1] 7.644885e-07 8.199637e-07 9.162530e-07  2761 0.9979879
+intercept[2] 7.565275e-07 8.068684e-07 9.064296e-07  3398 0.9980183
+mu[1]        7.026700e-11 7.041200e-11 7.068900e-11  2927 0.9997397
+mu[2]        6.887400e-11 6.902800e-11 6.932600e-11  3054 0.9994879
+sigma[1]     4.635000e-12 4.697000e-12 4.811000e-12  4423 0.9974519
+sigma[2]     5.316000e-12 5.382000e-12 5.492000e-12  3951 1.0002668
+noise[1]     7.431057e-07 7.922236e-07 8.954540e-07  3504 0.9979978
+noise[2]     7.353928e-07 7.830687e-07 8.770024e-07  3520 0.9979922
+
+Samples were drawn using NUTS(diag_e) at Wed May 29 14:13:13 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/dgemm_per_host_two_nodes_one_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/dgemm_per_host_two_nodes_one_prior.png]]
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_2 = data.frame(mnk=extracted$mnk_pos[,1], duration=extracted$y_sim[,1], origin="generated")
+t_g_4 = data.frame(mnk=extracted$mnk_pos[,2], duration=extracted$y_sim[,2], origin="generated")
+t_g_2 = t_g_2[sample(nrow(t_g_2), nrow(t2)), ]
+t_g_4 = t_g_4[sample(nrow(t_g_4), nrow(t4)), ]
+t2=select(t2,c("mnk","duration"))
+t2$origin = 'initial'
+t4=select(t4,c("mnk","duration"))
+t4$origin = 'initial'
+
+new_t2 = rbind(t2, t_g_2)
+new_t4 = rbind(t4, t_g_4)
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/generated_cpu2_one_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t2, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu2_one_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/generated_cpu4_one_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t4, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu4_one_prior.png]]
+
+Once again we have some points that are not covered but that's because
+we went back to a linear model. Otherwise, the results seem
+reasonable, they are some differences between the two nodes but not
+outstanding ones. We would now like to compare this with a case where
+we give different priors.
+****** With a different prior for each host
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts;
+    matrix[hosts,N] mnk;
+    matrix[hosts,N] duration;
+    vector[hosts] it_mean;
+    vector[hosts] it_sd;
+    vector[hosts] mu_mean;
+    vector[hosts] mu_sd;
+    vector[hosts] sigma_mean;
+    vector[hosts] sigma_sd;
+    vector[hosts] n_mean;
+    vector[hosts] n_sd;
+}
+parameters {
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+    for(i in 1:hosts){
+      intercept[i]=it_mean[i] + intercept_raw[i] * it_sd[i];
+      mu[i]=mu_mean[i] + mu_raw[i] * mu_sd[i];
+      sigma[i]=sigma_mean[i] + sigma_raw[i] * sigma_sd[i];
+      noise[i]= n_mean[i] + noise_raw[i] * n_sd[i];
+    }
+}
+model {
+    for(i in 1:hosts){
+      intercept_raw[i] ~ normal(0,1);
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      noise_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=2,mnk=rbind(t2$mnk,t4$mnk),duration=rbind(t2$duration,t4$duration),it_mean=c(7.853125e-07,7.452431e-07),it_sd=c(7.853125e-08,7.452431e-08),mu_mean=c(6.973063e-11,6.792463e-11),mu_sd=c(6.973063e-12,6.792463e-12), sigma_mean=c(2.223536e-12,2.109653e-12),sigma_sd=c(2.223536e-13,2.109653e-13),n_mean=c(7.830495e-07,7.203726e-07), n_sd=c(7.830495e-08,7.203726e-08))
+
+fit = sampling(sm,data=dt, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 409a86ee4851a360e58fc04c0e8a5c5a.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                     mean      se_mean           sd         2.5%          25%
+intercept[1] 7.880431e-07 1.276733e-09 7.692609e-08 6.381251e-07 7.355875e-07
+intercept[2] 7.380009e-07 1.285357e-09 7.454907e-08 5.915043e-07 6.880249e-07
+mu[1]        7.027800e-11 4.000000e-15 2.210000e-13 6.985700e-11 7.012600e-11
+mu[2]        6.887400e-11 4.000000e-15 2.500000e-13 6.838900e-11 6.870700e-11
+sigma[1]     4.895000e-12 2.000000e-15 1.010000e-13 4.699000e-12 4.825000e-12
+sigma[2]     5.542000e-12 2.000000e-15 1.060000e-13 5.326000e-12 5.471000e-12
+noise[1]     7.781871e-07 1.489335e-09 7.552529e-08 6.326489e-07 7.259371e-07
+noise[2]     7.123988e-07 1.172191e-09 6.983055e-08 5.793920e-07 6.635591e-07
+                      50%          75%        97.5% n_eff      Rhat
+intercept[1] 7.878554e-07 8.414993e-07 9.344399e-07  3630 0.9974140
+intercept[2] 7.379273e-07 7.872983e-07 8.811370e-07  3364 0.9999059
+mu[1]        7.027400e-11 7.042800e-11 7.071700e-11  3094 0.9977677
+mu[2]        6.887700e-11 6.904500e-11 6.935000e-11  3798 0.9974621
+sigma[1]     4.892000e-12 4.964000e-12 5.097000e-12  3343 0.9969910
+sigma[2]     5.542000e-12 5.612000e-12 5.753000e-12  3121 0.9983362
+noise[1]     7.780691e-07 8.308313e-07 9.248879e-07  2572 1.0004661
+noise[2]     7.129377e-07 7.612410e-07 8.463209e-07  3549 0.9987890
+
+Samples were drawn using NUTS(diag_e) at Wed May 29 15:51:08 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/dgemm_per_host_two_nodes_multiple_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/dgemm_per_host_two_nodes_multiple_prior.png]]
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_2 = data.frame(mnk=extracted$mnk_pos[,1], duration=extracted$y_sim[,1], origin="generated")
+t_g_4 = data.frame(mnk=extracted$mnk_pos[,2], duration=extracted$y_sim[,2], origin="generated")
+t_g_2 = t_g_2[sample(nrow(t_g_2), nrow(t2)), ]
+t_g_4 = t_g_4[sample(nrow(t_g_4), nrow(t4)), ]
+t2=select(t2,c("mnk","duration"))
+t2$origin = 'initial'
+t4=select(t4,c("mnk","duration"))
+t4$origin = 'initial'
+
+new_t2 = rbind(t2, t_g_2)
+new_t4 = rbind(t4, t_g_4)
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/generated_cpu2_multiple_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t2, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu2_multiple_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/generated_cpu4_multiple_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t4, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu4_multiple_prior.png]]
+
+There is no visible difference between giving the same prior and
+giving a prior for each host with only two hosts. We'll make a test
+with all of them.
+***** A test with a slow CPU and a normal one
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+For this test we use the same prior for every host since we
+established no difference is visible with two nodes.
+ 
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts;
+    matrix[hosts,N] mnk;
+    matrix[hosts,N] duration;
+    real it_mean; 
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+    for(i in 1:hosts){
+      intercept[i]=it_mean + intercept_raw[i] * it_sd;
+      mu[i]=mu_mean + mu_raw[i] * mu_sd;
+      sigma[i]=sigma_mean + sigma_raw[i] * sigma_sd;
+      noise[i]= n_mean + noise_raw[i] * n_sd;
+    }
+}
+model {
+    for(i in 1:hosts){
+      intercept_raw[i] ~ normal(0,1);
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      noise_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t2=sample_n(select(filter(tmp, tmp$cpu==2), everything()),500)
+t26=sample_n(select(filter(tmp, tmp$cpu==26), everything()),500)
+
+dt = list(N=500,hosts=2,mnk=rbind(t2$mnk,t26$mnk),duration=rbind(t2$duration,t26$duration),it_mean=7.661272e-07,it_sd=7.661272e-08,mu_mean=6.862693e-11,mu_sd=6.862693e-12,sigma_mean=1.895320e-12,sigma_sd=1.895320e-13,n_mean=7.462142e-07, n_sd=7.462142e-08)
+
+fit = sampling(sm,data=dt, iter=500, chains=8)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 9b2bdd7c71ff8d6f3f2897893ad7fcbd.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                     mean      se_mean           sd         2.5%          25%
+intercept[1] 7.725405e-07 1.299108e-09 7.439195e-08 6.321099e-07 7.217062e-07
+intercept[2] 7.602818e-07 1.532695e-09 8.106713e-08 6.033053e-07 7.042289e-07
+mu[1]        7.025300e-11 4.000000e-15 2.110000e-13 6.986000e-11 7.010600e-11
+mu[2]        8.996900e-11 5.000000e-15 2.810000e-13 8.942900e-11 8.978400e-11
+sigma[1]     4.554000e-12 2.000000e-15 9.200000e-14 4.377000e-12 4.492000e-12
+sigma[2]     6.293000e-12 2.000000e-15 9.300000e-14 6.114000e-12 6.232000e-12
+noise[1]     7.512104e-07 1.109580e-09 7.128249e-08 6.138021e-07 7.034565e-07
+noise[2]     7.430552e-07 1.323083e-09 7.445439e-08 5.998008e-07 6.908911e-07
+                      50%          75%        97.5% n_eff      Rhat
+intercept[1] 7.725553e-07 8.227731e-07 9.144704e-07  3279 0.9995215
+intercept[2] 7.587789e-07 8.147785e-07 9.148914e-07  2798 0.9995793
+mu[1]        7.025000e-11 7.039000e-11 7.068500e-11  3097 0.9986593
+mu[2]        8.997200e-11 9.015400e-11 9.050100e-11  2795 0.9976523
+sigma[1]     4.553000e-12 4.616000e-12 4.738000e-12  2906 0.9997997
+sigma[2]     6.293000e-12 6.355000e-12 6.476000e-12  2692 0.9994789
+noise[1]     7.495206e-07 7.990853e-07 8.934637e-07  4127 0.9974535
+noise[2]     7.442758e-07 7.956390e-07 8.872298e-07  3167 0.9991897
+
+Samples were drawn using NUTS(diag_e) at Wed May 29 16:57:52 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/dgemm_per_host_slow_node.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("intercept","mu","sigma","noise"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/dgemm_per_host_slow_node.png]]
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_2 = data.frame(mnk=extracted$mnk_pos[,1], duration=extracted$y_sim[,1], origin="generated")
+t_g_26 = data.frame(mnk=extracted$mnk_pos[,2], duration=extracted$y_sim[,2], origin="generated")
+t_g_2 = t_g_2[sample(nrow(t_g_2), nrow(t2)), ]
+t_g_26 = t_g_26[sample(nrow(t_g_26), nrow(t26)), ]
+t2=select(t2,c("mnk","duration"))
+t2$origin = 'initial'
+t26=select(t26,c("mnk","duration"))
+t26$origin = 'initial'
+
+new_t2 = rbind(t2, t_g_2)
+new_t26 = rbind(t26, t_g_26)
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/generated_cpu2_normal_node.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t2, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu2_normal_node.png]]
+
+#+begin_src R :results output graphics :file ./images/generated_cpu26_one_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t26, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_cpu26_one_prior.png]]
+
+With a normal node and a slower one, the results are once again very
+accurate and the generated data is very close from the initial one,
+with the exception of some points, for which we need to consider the
+mn, mk and nk coefficients.
+
+***** TODO A test with all the CPUs
+****** With Tom's data
+****** With the same prior for every node
+**** TODO Adapt the model to a M_H-2 N_H-2 model
