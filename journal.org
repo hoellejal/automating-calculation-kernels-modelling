@@ -7,7 +7,7 @@
 #+TAGS: [ PROGRAMMING : R(r) STAN(S) ]
 #+TAGS: [ TOOLS : ORGMODE(o) GIT(g)  ]
 #+TAGS: PAPER(P) VIDEO(V) MEETING(m) SEMINAR(s)
-#+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!) 
+#+SEQ_TODO: TODO(t!) STARTED(s!) INTERRUPTED(i!) DONE(d!)
 #+SEQ_TODO: REWORK(r!)
 #+SEQ_TODO: EDIT(e!)
 
@@ -4362,7 +4362,10 @@ because there shouldn't be the same mu_raw and sigma_raw for every
 coefficient, but also because visually, this model covers more initial
 data, and generates less observations where there weren't any.
 *** 2019-05-29 wednesday
-**** STARTED Made a M_H-1 N_H-2 model for dgemm
+**** DONE Made a M_H-1 N_H-2 model for dgemm
+:LOGBOOK:  
+- State "DONE"       from "STARTED"    [2019-06-03 lun. 15:55]
+:END:      
 ***** The model, a test with two CPU
 ****** With the same prior for everyone
 
@@ -4576,6 +4579,8 @@ sm = stan_model(model_code = modelString)
 #+end_src
 
 #+begin_src R :results output :session *R* :exports both
+t2=sample_n(select(filter(tmp, tmp$cpu==2), everything()),500)
+t4=sample_n(select(filter(tmp, tmp$cpu==4), everything()),500)
 dt = list(N=500,hosts=2,mnk=rbind(t2$mnk,t4$mnk),duration=rbind(t2$duration,t4$duration),it_mean=c(7.853125e-07,7.452431e-07),it_sd=c(7.853125e-08,7.452431e-08),mu_mean=c(6.973063e-11,6.792463e-11),mu_sd=c(6.973063e-12,6.792463e-12), sigma_mean=c(2.223536e-12,2.109653e-12),sigma_sd=c(2.223536e-13,2.109653e-13),n_mean=c(7.830495e-07,7.203726e-07), n_sd=c(7.830495e-08,7.203726e-08))
 
 fit = sampling(sm,data=dt, iter=500, chains=8)
@@ -4813,7 +4818,374 @@ accurate and the generated data is very close from the initial one,
 with the exception of some points, for which we need to consider the
 mn, mk and nk coefficients.
 
-***** TODO A test with all the CPUs
+***** DONE A test with all the CPUs
+:LOGBOOK: 
+- State "DONE"       from "STARTED"    [2019-06-03 lun. 15:55]
+- State "STARTED"    from "TODO"       [2019-06-03 lun. 14:42]
+:END:      
 ****** With Tom's data
+
+For this test, we put all of Tom's data for each node in a csv file,
+and then import it to use it as priors (with a prior for each CPU).
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts;
+    matrix[hosts,N] mnk;
+    matrix[hosts,N] duration;
+    vector[hosts] it_mean;
+    vector[hosts] it_sd;
+    vector[hosts] mu_mean;
+    vector[hosts] mu_sd;
+    vector[hosts] sigma_mean;
+    vector[hosts] sigma_sd;
+    vector[hosts] n_mean;
+    vector[hosts] n_sd;
+}
+parameters {
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+    for(i in 1:hosts){
+      intercept[i]=it_mean[i] + intercept_raw[i] * it_sd[i];
+      mu[i]=mu_mean[i] + mu_raw[i] * mu_sd[i];
+      sigma[i]=sigma_mean[i] + sigma_raw[i] * sigma_sd[i];
+      noise[i]= n_mean[i] + noise_raw[i] * n_sd[i];
+    }
+}
+model {
+    for(i in 1:hosts){
+      intercept_raw[i] ~ normal(0,1);
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      noise_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+priors=read.csv(file="~/Documents/org/priors.csv", header=TRUE, sep=",")
+
+t_i=list()
+for(i in 1:nrow(priors)){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+This time we make the fit with only 4 chains because the time needed
+would be too long otherwise, due to the amount of data.
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=nrow(priors),mnk=mnk,duration=duration,it_mean=priors$intercept,it_sd=priors$intercept_sd,mu_mean=priors$mu,mu_sd=priors$mu_sd,sigma_mean=priors$sigma,sigma_sd=priors$sigma_sd,n_mean=priors$noise,n_sd=priors$noise_sd)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars="mu")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 409a86ee4851a360e58fc04c0e8a5c5a.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+             mean se_mean       sd       2.5%        25%        50%        75%
+mu[1]  7.0673e-11   5e-15 2.36e-13 7.0188e-11 7.0526e-11 7.0667e-11 7.0820e-11
+mu[2]  6.7959e-11   3e-15 1.67e-13 6.7638e-11 6.7842e-11 6.7957e-11 6.8071e-11
+mu[3]  6.9190e-11   6e-15 2.69e-13 6.8653e-11 6.9007e-11 6.9197e-11 6.9373e-11
+mu[4]  6.7980e-11   4e-15 2.53e-13 6.7502e-11 6.7809e-11 6.7975e-11 6.8153e-11
+mu[5]  6.8638e-11   4e-15 2.04e-13 6.8207e-11 6.8514e-11 6.8642e-11 6.8771e-11
+mu[6]  6.8578e-11   5e-15 2.25e-13 6.8127e-11 6.8421e-11 6.8579e-11 6.8734e-11
+mu[7]  6.7977e-11   3e-15 1.97e-13 6.7581e-11 6.7849e-11 6.7980e-11 6.8106e-11
+mu[8]  6.7894e-11   4e-15 2.19e-13 6.7439e-11 6.7743e-11 6.7893e-11 6.8036e-11
+mu[9]  6.9169e-11   5e-15 2.53e-13 6.8663e-11 6.9002e-11 6.9171e-11 6.9342e-11
+mu[10] 6.7949e-11   4e-15 2.20e-13 6.7521e-11 6.7802e-11 6.7946e-11 6.8099e-11
+mu[11] 7.0292e-11   5e-15 2.11e-13 6.9891e-11 7.0147e-11 7.0297e-11 7.0437e-11
+mu[12] 6.7671e-11   4e-15 2.18e-13 6.7257e-11 6.7515e-11 6.7669e-11 6.7820e-11
+mu[13] 6.8262e-11   4e-15 2.28e-13 6.7828e-11 6.8107e-11 6.8252e-11 6.8412e-11
+mu[14] 6.7642e-11   4e-15 2.17e-13 6.7237e-11 6.7491e-11 6.7651e-11 6.7789e-11
+mu[15] 7.0022e-11   6e-15 3.06e-13 6.9403e-11 6.9815e-11 7.0034e-11 7.0232e-11
+mu[16] 6.8124e-11   5e-15 2.34e-13 6.7667e-11 6.7963e-11 6.8124e-11 6.8292e-11
+mu[17] 6.7828e-11   5e-15 2.10e-13 6.7428e-11 6.7682e-11 6.7829e-11 6.7969e-11
+mu[18] 6.7143e-11   3e-15 1.45e-13 6.6847e-11 6.7050e-11 6.7143e-11 6.7234e-11
+mu[19] 6.8206e-11   7e-15 2.41e-13 6.7711e-11 6.8051e-11 6.8219e-11 6.8362e-11
+mu[20] 6.7919e-11   4e-15 2.16e-13 6.7502e-11 6.7773e-11 6.7924e-11 6.8059e-11
+mu[21] 6.7767e-11   4e-15 2.28e-13 6.7349e-11 6.7607e-11 6.7759e-11 6.7935e-11
+mu[22] 6.8677e-11   6e-15 2.64e-13 6.8150e-11 6.8498e-11 6.8690e-11 6.8862e-11
+mu[23] 6.8016e-11   4e-15 2.11e-13 6.7603e-11 6.7870e-11 6.8015e-11 6.8162e-11
+mu[24] 6.8079e-11   4e-15 2.29e-13 6.7636e-11 6.7925e-11 6.8074e-11 6.8229e-11
+mu[25] 8.9455e-11   7e-15 3.73e-13 8.8719e-11 8.9206e-11 8.9456e-11 8.9711e-11
+mu[26] 7.3637e-11   4e-15 1.82e-13 7.3287e-11 7.3522e-11 7.3637e-11 7.3762e-11
+mu[27] 7.6223e-11   6e-15 2.64e-13 7.5710e-11 7.6039e-11 7.6227e-11 7.6405e-11
+mu[28] 7.6354e-11   5e-15 3.06e-13 7.5738e-11 7.6163e-11 7.6356e-11 7.6552e-11
+mu[29] 8.3533e-11   5e-15 2.79e-13 8.3006e-11 8.3355e-11 8.3529e-11 8.3712e-11
+mu[30] 8.2998e-11   7e-15 3.31e-13 8.2325e-11 8.2802e-11 8.2998e-11 8.3216e-11
+mu[31] 7.7764e-11   5e-15 2.62e-13 7.7228e-11 7.7609e-11 7.7767e-11 7.7931e-11
+mu[32] 7.8100e-11   7e-15 3.34e-13 7.7451e-11 7.7881e-11 7.8103e-11 7.8316e-11
+mu[33] 7.2543e-11   6e-15 2.31e-13 7.2091e-11 7.2390e-11 7.2538e-11 7.2695e-11
+mu[34] 6.8715e-11   5e-15 2.29e-13 6.8268e-11 6.8553e-11 6.8712e-11 6.8884e-11
+mu[35] 7.1886e-11   4e-15 2.25e-13 7.1437e-11 7.1737e-11 7.1885e-11 7.2031e-11
+mu[36] 6.7543e-11   3e-15 1.89e-13 6.7167e-11 6.7423e-11 6.7541e-11 6.7653e-11
+mu[37] 6.7951e-11   4e-15 2.08e-13 6.7562e-11 6.7804e-11 6.7951e-11 6.8097e-11
+mu[38] 6.8406e-11   4e-15 2.42e-13 6.7902e-11 6.8259e-11 6.8408e-11 6.8558e-11
+mu[39] 6.8673e-11   4e-15 2.36e-13 6.8237e-11 6.8506e-11 6.8674e-11 6.8826e-11
+mu[40] 6.8126e-11   4e-15 2.08e-13 6.7731e-11 6.7990e-11 6.8127e-11 6.8260e-11
+mu[41] 6.8210e-11   4e-15 2.22e-13 6.7775e-11 6.8062e-11 6.8212e-11 6.8358e-11
+mu[42] 6.8206e-11   4e-15 2.30e-13 6.7780e-11 6.8053e-11 6.8194e-11 6.8369e-11
+mu[43] 6.8082e-11   5e-15 2.29e-13 6.7622e-11 6.7936e-11 6.8083e-11 6.8238e-11
+mu[44] 6.8564e-11   5e-15 2.30e-13 6.8105e-11 6.8413e-11 6.8568e-11 6.8714e-11
+mu[45] 6.8487e-11   4e-15 2.27e-13 6.8032e-11 6.8334e-11 6.8486e-11 6.8647e-11
+mu[46] 6.7606e-11   5e-15 2.06e-13 6.7212e-11 6.7464e-11 6.7606e-11 6.7747e-11
+mu[47] 6.8158e-11   4e-15 2.03e-13 6.7763e-11 6.8015e-11 6.8160e-11 6.8288e-11
+mu[48] 6.7818e-11   4e-15 2.06e-13 6.7413e-11 6.7681e-11 6.7818e-11 6.7950e-11
+mu[49] 7.2391e-11   3e-15 1.92e-13 7.2025e-11 7.2259e-11 7.2391e-11 7.2523e-11
+mu[50] 6.7120e-11   4e-15 2.07e-13 6.6726e-11 6.6973e-11 6.7116e-11 6.7261e-11
+mu[51] 6.8489e-11   5e-15 2.24e-13 6.8058e-11 6.8323e-11 6.8489e-11 6.8652e-11
+mu[52] 6.8530e-11   5e-15 2.30e-13 6.8073e-11 6.8375e-11 6.8525e-11 6.8691e-11
+mu[53] 6.8417e-11   4e-15 2.13e-13 6.8007e-11 6.8267e-11 6.8417e-11 6.8570e-11
+mu[54] 6.8666e-11   5e-15 2.36e-13 6.8217e-11 6.8500e-11 6.8671e-11 6.8835e-11
+mu[55] 6.9781e-11   5e-15 2.48e-13 6.9316e-11 6.9620e-11 6.9765e-11 6.9947e-11
+mu[56] 6.8374e-11   5e-15 2.33e-13 6.7911e-11 6.8221e-11 6.8374e-11 6.8531e-11
+mu[57] 6.8422e-11   4e-15 2.28e-13 6.7994e-11 6.8262e-11 6.8429e-11 6.8580e-11
+mu[58] 6.8058e-11   4e-15 2.19e-13 6.7633e-11 6.7921e-11 6.8062e-11 6.8197e-11
+mu[59] 6.8228e-11   4e-15 2.04e-13 6.7836e-11 6.8095e-11 6.8235e-11 6.8358e-11
+mu[60] 6.7719e-11   4e-15 1.94e-13 6.7342e-11 6.7579e-11 6.7725e-11 6.7856e-11
+mu[61] 6.8334e-11   4e-15 2.50e-13 6.7862e-11 6.8163e-11 6.8328e-11 6.8503e-11
+mu[62] 6.8226e-11   5e-15 2.38e-13 6.7756e-11 6.8072e-11 6.8230e-11 6.8391e-11
+mu[63] 6.7717e-11   4e-15 1.94e-13 6.7320e-11 6.7599e-11 6.7716e-11 6.7842e-11
+mu[64] 6.7795e-11   4e-15 2.13e-13 6.7373e-11 6.7651e-11 6.7788e-11 6.7944e-11
+            97.5% n_eff      Rhat
+mu[1]  7.1142e-11  1951 0.9973934
+mu[2]  6.8280e-11  3050 0.9970512
+mu[3]  6.9716e-11  2266 0.9972631
+mu[4]  6.8481e-11  3809 0.9974811
+mu[5]  6.9034e-11  2462 0.9988577
+mu[6]  6.9035e-11  2025 0.9994664
+mu[7]  6.8379e-11  3498 0.9974239
+mu[8]  6.8346e-11  3204 0.9961857
+mu[9]  6.9660e-11  2647 0.9986371
+mu[10] 6.8379e-11  2563 0.9978885
+mu[11] 7.0694e-11  2028 0.9992098
+mu[12] 6.8110e-11  3143 0.9975753
+mu[13] 6.8721e-11  2740 0.9971963
+mu[14] 6.8059e-11  3037 0.9971414
+mu[15] 7.0596e-11  2639 0.9977692
+mu[16] 6.8560e-11  2473 0.9976742
+mu[17] 6.8236e-11  2017 0.9970223
+mu[18] 6.7436e-11  2503 0.9979427
+mu[19] 6.8646e-11  1368 1.0009566
+mu[20] 6.8339e-11  2773 0.9968883
+mu[21] 6.8189e-11  2851 0.9968978
+mu[22] 6.9174e-11  2046 0.9984675
+mu[23] 6.8411e-11  2403 0.9976797
+mu[24] 6.8522e-11  2634 0.9975007
+mu[25] 9.0174e-11  3243 0.9972513
+mu[26] 7.4005e-11  2222 0.9988651
+mu[27] 7.6739e-11  2201 0.9981781
+mu[28] 7.6959e-11  3123 0.9970003
+mu[29] 8.4097e-11  3490 0.9967337
+mu[30] 8.3627e-11  2333 0.9974177
+mu[31] 7.8280e-11  3153 0.9987105
+mu[32] 7.8737e-11  2623 0.9979889
+mu[33] 7.2983e-11  1736 0.9987888
+mu[34] 6.9150e-11  2346 0.9975152
+mu[35] 7.2322e-11  2695 0.9977149
+mu[36] 6.7918e-11  3319 0.9969071
+mu[37] 6.8342e-11  2482 0.9963745
+mu[38] 6.8891e-11  3924 0.9972818
+mu[39] 6.9128e-11  3504 0.9970264
+mu[40] 6.8563e-11  2212 0.9992765
+mu[41] 6.8624e-11  2492 0.9970435
+mu[42] 6.8651e-11  2735 0.9975134
+mu[43] 6.8526e-11  2320 0.9971229
+mu[44] 6.9023e-11  2483 0.9971691
+mu[45] 6.8931e-11  3040 0.9974746
+mu[46] 6.8005e-11  2000 0.9979467
+mu[47] 6.8560e-11  2579 0.9979061
+mu[48] 6.8210e-11  2311 0.9992954
+mu[49] 7.2751e-11  3234 0.9971189
+mu[50] 6.7520e-11  2959 0.9973144
+mu[51] 6.8934e-11  2424 0.9972709
+mu[52] 6.8983e-11  2383 0.9981854
+mu[53] 6.8807e-11  3547 0.9968613
+mu[54] 6.9106e-11  2537 0.9973662
+mu[55] 7.0290e-11  2683 0.9970602
+mu[56] 6.8822e-11  2367 0.9983651
+mu[57] 6.8862e-11  3462 0.9976889
+mu[58] 6.8490e-11  2652 0.9965017
+mu[59] 6.8623e-11  2642 0.9965458
+mu[60] 6.8094e-11  2920 0.9968991
+mu[61] 6.8814e-11  4781 0.9974511
+mu[62] 6.8679e-11  2442 0.9968791
+mu[63] 6.8098e-11  2868 0.9976047
+mu[64] 6.8214e-11  3372 0.9981437
+
+Samples were drawn using NUTS(diag_e) at Mon Jun  3 13:42:49 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Due to the amount of found parameters, we won't bother showing the
+traces, especially since the fitting returned no warnings, so we can
+assume the traces must be correct. We won't print all of the values
+either for the same reason, especially since we've seen our model
+seems correct enough with less hosts, so we can assume if the values
+for one parameter are correct, the same goes for the other parameters.
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_64 = data.frame(mnk=extracted$mnk_pos[,64], duration=extracted$y_sim[,64], origin="generated")
+t_g_64 = t_g_64[sample(nrow(t_g_64), nrow(t_i[[1]])), ]
+t64=t_i[[64]]
+t64$origin = 'initial'
+new_t64 = rbind(t64, t_g_64)
+#+end_src
+
+As before, we won't show the difference between the real data and the
+one generated by stan for each host because that wouldn't be very
+useful.
+
+#+begin_src R :results output graphics :file ./images/generated_per_host_node_64_multiple_priors.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t64, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_per_host_node_64_multiple_priors.png]]
+
+Now we'll compare this result with the a model where we give only give
+one prior for all the hosts.
+
 ****** With the same prior for every node
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts;
+    matrix[hosts,N] mnk;
+    matrix[hosts,N] duration;
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+    for(i in 1:hosts){
+      intercept[i]=it_mean + intercept_raw[i] * it_sd;
+      mu[i]=mu_mean + mu_raw[i] * mu_sd;
+      sigma[i]=sigma_mean + sigma_raw[i] * sigma_sd;
+      noise[i]= n_mean + noise_raw[i] * n_sd;
+    }
+}
+model {
+    for(i in 1:hosts){
+      intercept_raw[i] ~ normal(0,1);
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      noise_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:nrow(priors)){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+Once again we use the default values as priors.
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=nrow(priors),mnk=mnk,duration=duration,it_mean=7.661272e-07,it_sd=7.661272e-08,mu_mean=6.862693e-11,mu_sd=6.862693e-12,sigma_mean=1.895320e-12,sigma_sd=1.895320e-13,n_mean=7.462142e-07,n_sd=7.462142e-08)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_64 = data.frame(mnk=extracted$mnk_pos[,64], duration=extracted$y_sim[,64], origin="generated")
+t_g_64 = t_g_64[sample(nrow(t_g_64), nrow(t_i[[1]])), ]
+t64=t_i[[64]]
+t64$origin = 'initial'
+new_t64 = rbind(t64, t_g_64)
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/generated_per_host_node_64_one_prior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t64, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_per_host_node_64_one_prior.png]]
+There's not much difference (at the scale of one CPU) between a general
+prior and a more precise one.
+
+** 2019-06 june
+*** 2019-06-03 monday
 **** TODO Adapt the model to a M_H-2 N_H-2 model
