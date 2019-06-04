@@ -5188,4 +5188,174 @@ prior and a more precise one.
 
 ** 2019-06 june
 *** 2019-06-03 monday
-**** TODO Adapt the model to a M_H-2 N_H-2 model
+**** DONE Adapt the model to a M_H-2 N_H-2 model
+:LOGBOOK:  
+- State "DONE"       from "STARTED" [2019-06-04 mar. 11:26]
+- State "STARTED"    from "TODO"       [2019-06-03 lun. 16:13]
+:END:      
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/Documents/org/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    int hosts;
+    matrix[hosts,N] m;
+    matrix[hosts,N] n;
+    matrix[hosts,N] k;
+    matrix[hosts,N] duration;
+    vector[5] mu_mean; //mu[1]=mnk, mu[2]=mn, mu[3]=mk, mu[4]=nk, mu[5]=intercept
+    vector[5] mu_sd;
+    vector[5] sigma_mean;
+    vector[5] sigma_sd;
+}
+transformed data {
+    matrix[hosts,N] mnk;
+    matrix[hosts,N] mn;
+    matrix[hosts,N] mk;
+    matrix[hosts,N] nk;
+    for(i in 1:hosts){
+      for(j in 1:N){
+        mnk[i,j] = m[i,j]*n[i,j]*k[i,j];
+        mn[i,j] = m[i,j]*n[i,j];
+        mk[i,j] = m[i,j]*k[i,j];
+        nk[i,j] = n[i,j]*k[i,j];
+      }
+    }
+}
+parameters {
+    matrix[hosts,5] mu_raw;
+    matrix[hosts,5] sigma_raw;
+}
+transformed parameters {
+    matrix[hosts,5] mu;
+    matrix[hosts,5] sigma;
+    for(i in 1:hosts){
+      for(j in 1:5){
+        mu[i,j] = mu_mean[j] + mu_raw[i,j] * mu_sd[j];
+        sigma[i,j] = sigma_mean[j] + sigma_raw[i,j] * sigma_sd[j];
+      }
+    }
+}
+model {
+    for(i in 1:hosts){
+      mu_raw[i] ~ normal(0,1);
+      sigma_raw[i] ~ normal(0,1);
+      duration[i] ~ normal(mu[i,1]*mnk[i]+mu[i,2]*mn[i]+mu[i,3]*mk[i]+mu[i,4]*nk[i]+mu[i,5], sigma[i,1]*mnk[i]+sigma[i,2]*mn[i]+sigma[i,3]*mk[i]+sigma[i,4]*nk[i]+sigma[i,5]);
+    }
+}
+
+generated quantities {
+  vector[hosts] mnk_pos;
+  vector[hosts] mn_pos;
+  vector[hosts] mk_pos;
+  vector[hosts] nk_pos;
+  vector[hosts] y_sim;
+  for(i in 1:hosts){
+     mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+     mn_pos[i] = mn[i][categorical_rng(rep_vector(1,N) / N)];
+     mk_pos[i] = mk[i][categorical_rng(rep_vector(1,N) / N)];
+     nk_pos[i] = nk[i][categorical_rng(rep_vector(1,N) / N)];
+     y_sim[i] = normal_rng(mu[i,1]*mnk_pos[i]+mu[i,2]*mn_pos[i]+mu[i,3]*mk_pos[i]+mu[i,4]*nk_pos[i]+mu[i,5], sigma[i,1]*mnk_pos[i]+sigma[i,2]*mn_pos[i]+sigma[i,3]*mk_pos[i]+sigma[i,4]*nk_pos[i]+sigma[i,5]);
+  }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+Since we now know there isn't much difference when giving a different
+prior for the parameters of each host (compared to one general prior),
+we'll only use one prior for this example. We'll also only use two
+nodes, otherwise the fit takes ages.
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+t_i[[1]]=sample_n(select(filter(tmp, tmp$cpu==26), c("m","n","k", "mnk", "duration")),500)
+t_i[[2]]=sample_n(select(filter(tmp, tmp$cpu==64), c("m","n","k", "mnk", "duration")),500)
+
+m=lapply(t_i, '[[', 1)
+n=lapply(t_i, '[[', 2)
+k=lapply(t_i, '[[', 3)
+duration=lapply(t_i, '[[', 5)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=2,m=m,n=n,k=k,duration=duration,mu_mean=c(6.814095e-11,3.416642e-11,1.648690e-09,3.067383e-09,7.661272e-07),mu_sd=c(6.814095e-12,3.416642e-12,1.648690e-10,3.067383e-10,7.661272e-08),sigma_mean=c(1.224054e-12,1.185692e-11,2.846888e-11,3.073464e-11,7.462142e-07),sigma_sd=c(1.224054e-13,1.185692e-12,2.846888e-12,3.073464e-12,7.462142e-08))
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15, pars=c("mu[1,1]","mu[2,1]"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 5b1503bbc291305d951fdfd893f403bd.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+              mean se_mean       sd       2.5%        25%        50%        75%
+mu[1,1] 8.3366e-11   6e-15 1.94e-13 8.2960e-11 8.3239e-11 8.3372e-11 8.3502e-11
+mu[2,1] 6.2206e-11   2e-15 6.70e-14 6.2073e-11 6.2159e-11 6.2207e-11 6.2251e-11
+             97.5% n_eff      Rhat
+mu[1,1] 8.3718e-11   970 0.9973274
+mu[2,1] 6.2340e-11   966 1.0019734
+
+Samples were drawn using NUTS(diag_e) at Tue Jun  4 11:07:47 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+As expected the mnk coefficient is higher on the CPU number 26, which
+was known as slower.
+
+#+begin_src R :results output graphics :file ./images/traces_mh2_nh2.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("mu","sigma"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/traces_mh2_nh2.png]]
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+
+t_g_26 = data.frame(mnk=extracted$mnk_pos[,1], duration=extracted$y_sim[,1], origin="generated")
+t_g_26 = t_g_26[sample(nrow(t_g_26), nrow(t_i[[1]])), ]
+t26=t_i[[1]]
+t26=select(t26,c("mnk","duration"))
+t26$origin = 'initial'
+new_t26 = rbind(t26, t_g_26)
+
+t_g_64 = data.frame(mnk=extracted$mnk_pos[,2], duration=extracted$y_sim[,2], origin="generated")
+t_g_64 = t_g_64[sample(nrow(t_g_64), nrow(t_i[[2]])), ]
+t64=t_i[[2]]
+t64=select(t64,c("mnk","duration"))
+t64$origin = 'initial'
+new_t64 = rbind(t64, t_g_64)
+#+end_src
+
+#+begin_src R :results output graphics :file (org-babel-temp-file "figure" ".png") :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t26, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:/tmp/babel-5316MYa/figure5316Zig.png]]
+
+#+begin_src R :results output graphics :file (org-babel-temp-file "figure" ".png") :exports both :width 600 :height 400 :session *R* 
+ggplot(new_t64, aes(mnk,duration,color=origin)) + geom_point(alpha=0.6)
+#+end_src
+
+#+RESULTS:
+[[file:/tmp/babel-5316MYa/figure5316msm.png]]
+
