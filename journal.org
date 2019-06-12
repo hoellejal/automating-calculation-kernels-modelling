@@ -5362,7 +5362,11 @@ generated quantities {
 sm = stan_model(model_code = modelString)
 #+end_src
 
-**** STARTED Plotting the posterior (with a M_H-1 N_H-2 model)
+**** DONE Plotting the posterior (with a M_H-1 N_H-2 model)
+:LOGBOOK:  
+- State "DONE"       from "STARTED" [2019-06-12 mer. 14:18]
+:END:      
+***** With all the observations
 #+begin_src R :results output :session *R* :exports both
 library(rstan)
 library(dplyr)
@@ -5460,18 +5464,1004 @@ dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,it_mean=
 fit = sampling(sm,data=dt, iter=500, chains=4)
 #+end_src
 
-#+begin_src R :results output :session *R* :exports both
+#+begin_src R :results output graphics :file ./images/intercept_on_mu_posterior.png :exports both :width 600 :height 400 :session *R* 
 extracted=rstan::extract(fit)
-dtf=data.frame(intercept=extracted$intercept,mu=extracted$mu)
-ggplot(dtf,aes(intercept.1,mu.1))
-
-ggplot(data=dtf,mapping=aes(intercept.1,mu.1))+stat_ellipse(mapping=aes(intercept.1,mu.1))+geom_point(colour="red",alpha=0.2)+stat_ellipse(mapping=aes(intercept.26,mu.26))+geom_point(data=dtf,mapping=aes(intercept.26,mu.26),alpha=0.2,colour="blue")
+dtf=data.frame(intercept=extracted$intercept,mu=extracted$mu,sigma=extracted$sigma)
+ggplot(data=dtf,mapping=aes(intercept.1,mu.1))+geom_point(colour="red",alpha=0.2)+stat_ellipse(mapping=aes(intercept.1,mu.1))+geom_point(data=dtf,mapping=aes(intercept.2,mu.2),alpha=0.2,colour="violet")+stat_ellipse(mapping=aes(intercept.2,mu.2))+geom_point(data=dtf,mapping=aes(intercept.25,mu.25),alpha=0.2,colour="green")+stat_ellipse(mapping=aes(intercept.25,mu.25))+geom_point(data=dtf,mapping=aes(intercept.64,mu.64),alpha=0.2,colour="blue")+stat_ellipse(mapping=aes(intercept.64,mu.64))
 #+end_src
 
 #+RESULTS:
-:  
-: Error in stat_elipse() : impossible de trouver la fonction "stat_elipse"
+[[file:./images/intercept_on_mu_posterior.png]]
+
+Here we compare the posterior mu on intercept for four CPUs: three
+"regular" ones (in blue, violet and red), including two coming from
+the same nodes, and a slow one (in green).
+
+We can also take a look at the mu on sigma plot.
+
+#+begin_src R :results output graphics :file ./images/sigma_on_mu_posterior.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf,mapping=aes(sigma.1,mu.1))+geom_point(colour="red",alpha=0.2)+stat_ellipse(mapping=aes(sigma.1,mu.1))+geom_point(data=dtf,mapping=aes(sigma.2,mu.2),alpha=0.2,colour="violet")+stat_ellipse(mapping=aes(sigma.2,mu.2))+geom_point(data=dtf,mapping=aes(sigma.25,mu.25),alpha=0.2,colour="green")+stat_ellipse(mapping=aes(sigma.25,mu.25))+geom_point(data=dtf,mapping=aes(sigma.64,mu.64),alpha=0.2,colour="blue")+stat_ellipse(mapping=aes(sigma.64,mu.64))
+#+end_src
+
+#+RESULTS:
+[[file:./images/sigma_on_mu_posterior.png]]
+
+We notice that sigma tends to have less broad differences between
+observations, and thus be more centered than the intercept. However,
+by looking at all the observations for each host, we can't reasonably
+look at all the hosts in one plot, which is why we must take a look at
+the means of the observations.
+
+***** With a mean of the observations
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_means.png :exports both :width 600 :height 400 :session *R* 
+dtf=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
+ggplot(data=dtf,mapping=aes(intercept,mu))+stat_ellipse(mapping=aes(intercept,mu))+geom_point()
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_means.png]]
+
+If we want to see which point correspond to which cpu, the ellipse
+cannot be done because the points are separated, so there are too few
+points to calculate it.
+
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_means_color_per_cpu.png :exports both :width 600 :height 400 :session *R* 
+cpu=1:64
+ggplot(data=dtf,mapping=aes(intercept,mu,color=factor(cpu)))+stat_ellipse(mapping=aes(intercept,mu))+geom_point()
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_means_color_per_cpu.png]]
+
+The same goes for mu on sigma.
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_means.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf,mapping=aes(sigma,mu))+stat_ellipse(mapping=aes(sigma,mu))+geom_point()
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_means.png]]
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_means_color_per_cpu.png :exports both :width 600 :height 400 :session *R* 
+cpu=1:64
+ggplot(data=dtf,mapping=aes(sigma,mu,color=factor(cpu)))+geom_point()
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_means_color_per_cpu.png]]
+
+By comparing the two plots, we can find where the ellipse should be.
+*** 2019-06-12 wednesday
+**** STARTED Several tests to find out the importance of priors
+***** With a M_H-1 N_H-2 model
+****** Without priors
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+    int<lower=0> N; //number of observations
+    int hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix[hosts,N] duration; //N*hosts observations of the duration of dgemm
+}
+parameters {
+    //The parameters
+
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+}
+model {
+    //The likelihood
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+To remove the priors, we had to go back to a centered
+parameterisation.
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+ 
+SAMPLING FOR MODEL 'e267312578fccefc93fc6c8c2c46b20a' NOW (CHAIN 1).
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.01197e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.90155e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.78739e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.1745e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.41462e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.77331e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.45194e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.32119e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.68069e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.92172e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.78144e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.16898e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.81354e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.9188e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.17521e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.70868e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.65004e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.70031e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.03215e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.15036e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.23089e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.20765e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.99983e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.76643e+07, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.12641e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.2649e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.03755e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.13217e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -8.02403e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.30032e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.85142e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.04583e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.06609e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.26169e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -8.63639e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.4352e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.38717e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -8.37092e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.56997e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.12565e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -8.71023e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.96248e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.05978e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.42186e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.64247e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.48352, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.93315e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.88382e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.95762e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.40805e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.00706e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.78124e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.92654e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.53337e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.53997e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.48541e+07, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.36069e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.75153e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.90644e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.70389e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.15992e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.87308e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.28057e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.77383e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -8.69878e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.96946e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.15362e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.25662e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.59513e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -9.60866e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.29051e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.68557e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.3584e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.4091e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.07745e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.382284, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.16468e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.88227e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.49583e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.12513e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.16798e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.67138e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.70287e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.25502e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.13126e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.13649e+10, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.12766e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -2.68207e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.01894e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.64261e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -5.79822e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -4.79959e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -1.63608e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.70035e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.23504e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[304] is -0.909899, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -6.3553e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -3.01002e+08, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.77839e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[1] is -7.1328e+09, but must be > 0!  (in 'model2691572aae3c_e267312578fccefc93fc6c8c2c46b20a' at line 19)
+
+Chain 1: 
+Chain 1: Initialization between (-2, 2) failed after 100 attempts. 
+Chain 1:  Try specifying initial values, reducing ranges of constrained values, or reparameterizing the model.
+[1] "Error in sampler$call_sampler(args_list[[i]]) : Initialization failed."
+error occurred during calling the sampler; sampling not done
+#+end_example
+
+Without any priors, the initialisation tries negative values, which
+are clearly wrong in our model. To solve that, we try to add more
+contraints to our variables.
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+}
+parameters {
+    //The parameters
+
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector<lower=0>[hosts] sigma;
+    vector[hosts] noise;
+}
+model {
+    //The likelihood
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+ 
+SAMPLING FOR MODEL '5d75e75cb2a06e65c2ef761cde560e94' NOW (CHAIN 1).
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -1.53059, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[493] is -0.177593, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.41058, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[172] is -1.35991, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[172] is -1.15205, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.523521, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[426] is -0.163117, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[493] is -0.690385, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.4071, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -1.14238, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.145973, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.909831, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.345318, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -1.30129, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.715952, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.178891, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.0584461, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.177719, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -0.235051, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -1.21957, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.064096, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.263004, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -1.32071, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -0.0168204, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.0967132, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.0390246, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[493] is -0.700514, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.998796, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.299259, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.277177, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.0668282, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[493] is -1.46069, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.890667, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[172] is -0.338032, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.884552, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.120128, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.57385, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.6048, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.777858, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[386] is -1.2174, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -1.39055, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.200659, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.996346, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.346415, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.37935, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[493] is -0.0355526, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.066391, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -1.65521, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[23] is -0.447865, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[386] is -0.49655, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.49277, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.36213, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.666221, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.625424, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.502156, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[224] is -0.435425, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -1.73295, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.831229, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.801559, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.273974, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.665321, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.346152, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.996269, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[130] is -0.57796, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.0235572, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.623236, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -1.2256, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -0.663531, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[33] is -0.803057, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.55291, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.88274, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.553469, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.24417, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.844126, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.94644, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.360327, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -1.4612, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[24] is -0.862489, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[33] is -0.0778014, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[385] is -0.297868, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.618766, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -1.32112, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.480653, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -1.46325, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.0299132, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.574346, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -1.28705, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.760845, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.0982398, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.0153386, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[366] is -0.120935, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[463] is -0.0192909, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.760355, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.32053, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -1.38613, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -1.28835, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[152] is -0.211818, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[487] is -0.0473782, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[208] is -0.128975, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: Rejecting initial value:
+Chain 1:   Error evaluating the log probability at the initial value.
+Chain 1: Exception: normal_lpdf: Scale parameter[283] is -0.535785, but must be > 0!  (in 'model269141bb6ec5_5d75e75cb2a06e65c2ef761cde560e94' at line 19)
+
+Chain 1: 
+Chain 1: Initialization between (-2, 2) failed after 100 attempts. 
+Chain 1:  Try specifying initial values, reducing ranges of constrained values, or reparameterizing the model.
+[1] "Error in sampler$call_sampler(args_list[[i]]) : Initialization failed."
+error occurred during calling the sampler; sampling not done
+#+end_example
+
+Surprisingly, even adding constraints doesn't seem to solve the
+issue. We try to indicate the init values.
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration)
+
+initfunction=function(){
+  list(intercept=array(rep(1e-07,64)),mu=array(rep(1e-07,64)),sigma=array(rep(1e-07,64)),noise=array(rep(1e-07,64)))
+}
+fit = sampling(sm,data=dt, iter=500, chains=4,init=initfunction)
+#+end_src
 
 
-
-
+****** With a less informative prior
+***** With a M_H-2 N_H-2 model
