@@ -1791,7 +1791,17 @@ context.
 **** Started to look at the model of dgemm with the provided data :STAN:R:
 Read [[https://github.com/Ezibenroc/calibration_analysis/blob/master/dahu/blas/dgemm_heterogeneous_model.ipynb ][Tom's analysis on the heterogenous model of dgemm]].
 
-First we import the data from the dgemm.csv file.
+First we download the data, and store it in a file named dgemm.csv
+
+#+begin_src sh :results output :exports both
+wget -P ~/ -c https://github.com/Ezibenroc/mpi_calibration/raw/master/dahu/blas/dgemm_calibration.csv
+sed 's/function/func/g' -i ~/dgemm_calibration.csv
+cut -d, -f2,3,4,6,12 ~/dgemm_calibration.csv > ~/dgemm.csv
+#+end_src
+
+#+RESULTS:
+
+Then we import the data from the dgemm.csv file.
 
 #+begin_src R :results output :session *R* :exports both
 library(rstan)
