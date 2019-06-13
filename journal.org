@@ -5467,6 +5467,7 @@ fit = sampling(sm,data=dt, iter=500, chains=4)
 #+begin_src R :results output graphics :file ./images/intercept_on_mu_posterior.png :exports both :width 600 :height 400 :session *R* 
 extracted=rstan::extract(fit)
 dtf=data.frame(intercept=extracted$intercept,mu=extracted$mu,sigma=extracted$sigma)
+
 ggplot(data=dtf,mapping=aes(intercept.1,mu.1))+geom_point(colour="red",alpha=0.2)+stat_ellipse(mapping=aes(intercept.1,mu.1))+geom_point(data=dtf,mapping=aes(intercept.2,mu.2),alpha=0.2,colour="violet")+stat_ellipse(mapping=aes(intercept.2,mu.2))+geom_point(data=dtf,mapping=aes(intercept.25,mu.25),alpha=0.2,colour="green")+stat_ellipse(mapping=aes(intercept.25,mu.25))+geom_point(data=dtf,mapping=aes(intercept.64,mu.64),alpha=0.2,colour="blue")+stat_ellipse(mapping=aes(intercept.64,mu.64))
 #+end_src
 
@@ -5492,45 +5493,28 @@ by looking at all the observations for each host, we can't reasonably
 look at all the hosts in one plot, which is why we must take a look at
 the means of the observations.
 
-***** With a mean of the observations
+***** EDIT With a mean of the observations
 #+begin_src R :results output graphics :file ./images/mu_on_intercept_means.png :exports both :width 600 :height 400 :session *R* 
 dtf=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
-ggplot(data=dtf,mapping=aes(intercept,mu))+stat_ellipse(mapping=aes(intercept,mu))+geom_point()
+cpu=1:64
+ggplot(dtf,aes(x=intercept,y=mu)) + stat_ellipse() + geom_point(aes(color=factor(cpu)))
 #+end_src
 
 #+RESULTS:
 [[file:./images/mu_on_intercept_means.png]]
 
-If we want to see which point correspond to which cpu, the ellipse
-cannot be done because the points are separated, so there are too few
-points to calculate it.
-
-#+begin_src R :results output graphics :file ./images/mu_on_intercept_means_color_per_cpu.png :exports both :width 600 :height 400 :session *R* 
-cpu=1:64
-ggplot(data=dtf,mapping=aes(intercept,mu,color=factor(cpu)))+stat_ellipse(mapping=aes(intercept,mu))+geom_point()
-#+end_src
-
-#+RESULTS:
-[[file:./images/mu_on_intercept_means_color_per_cpu.png]]
-
 The same goes for mu on sigma.
 
 #+begin_src R :results output graphics :file ./images/mu_on_sigma_means.png :exports both :width 600 :height 400 :session *R* 
-ggplot(data=dtf,mapping=aes(sigma,mu))+stat_ellipse(mapping=aes(sigma,mu))+geom_point()
+cpu=1:64
+ggplot(dtf,aes(x=sigma,y=mu)) + stat_ellipse() + geom_point(aes(color=factor(cpu)))
 #+end_src
 
 #+RESULTS:
 [[file:./images/mu_on_sigma_means.png]]
 
-#+begin_src R :results output graphics :file ./images/mu_on_sigma_means_color_per_cpu.png :exports both :width 600 :height 400 :session *R* 
-cpu=1:64
-ggplot(data=dtf,mapping=aes(sigma,mu,color=factor(cpu)))+geom_point()
-#+end_src
+Changed the plots according to Arnaud's advice for the ellipse.
 
-#+RESULTS:
-[[file:./images/mu_on_sigma_means_color_per_cpu.png]]
-
-By comparing the two plots, we can find where the ellipse should be.
 *** 2019-06-12 wednesday
 **** STARTED Several tests to find out the importance of priors
 ***** With a M_H-1 N_H-2 model
@@ -5575,7 +5559,8 @@ sm = stan_model(model_code = modelString)
 #+end_src
 
 To remove the priors, we had to go back to a centered
-parameterisation.
+parameterisation, despite the expected drop in performance it will
+cause.
 
 #+begin_src R :results output :session *R* :exports both
 t_i=list()
@@ -6459,9 +6444,196 @@ dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration)
 initfunction=function(){
   list(intercept=array(rep(1e-07,64)),mu=array(rep(1e-07,64)),sigma=array(rep(1e-07,64)),noise=array(rep(1e-07,64)))
 }
-fit = sampling(sm,data=dt, iter=500, chains=4,init=initfunction)
+fit = sampling(sm,data=dt, iter=400, chains=3,init=initfunction)
 #+end_src
 
+#+RESULTS:
+#+begin_example
+Warning messages:
+1: There were 285 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 311 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+We had to reduce the number of chains and iterations because of the
+time needed to make the fit.
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+print(mean(extracted$intercept))
+print(mean(extracted$mu))
+print(mean(extracted$sigma))
+print(mean(extracted$noise))
+#+end_src
+
+#+RESULTS:
+: 
+: [1] 6.504833e-07
+: 
+: [1] 7.259544e-11
+: 
+: [1] 1e-07
+: 
+: [1] 1.076834e-06
+
+So without priors, the results found are not completely off, but they
+are not very accurate.
+
+#+begin_src R :results output graphics :file ./images/trace_mh1_nh2_no_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit,pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mh1_nh2_no_prior.png]]
+
+And as expected with these results, the chains don't converge in the
+trace. It isn't so surprising considering giving a prior is considered
+one of the good practices in stan, and the more accurate the prior,
+the more accurate the results (without a big amount of data). As a
+fact, it is surprising that the results could get so "close" to the
+usual ones, and that's probably due to the init values given, that
+guide stan in the right direction to start the fit.
 
 ****** With a less informative prior
-***** With a M_H-2 N_H-2 model
+
+We now consider giving a more generic prior, that could help the fit
+but that wouldn't be extremely precise considering it's unlikely we'd
+have that level of information.
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    //The raw parameters
+
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector[hosts] sigma_raw;
+    vector[hosts] noise_raw;
+}
+transformed parameters {
+    //The real parameters
+
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector[hosts] sigma;
+    vector[hosts] noise;
+   
+    //The priors for the real parameters
+
+    intercept=it_mean + intercept_raw * it_sd;
+    mu=mu_mean + mu_raw * mu_sd;
+    sigma=sigma_mean + sigma_raw * sigma_sd;
+    noise= n_mean + noise_raw * n_sd;
+}
+model {
+    //The priors for the raw parameters
+
+    intercept_raw ~ normal(0,1);
+    mu_raw ~ normal(0,1);
+    sigma_raw ~ normal(0,1);
+    noise_raw ~ normal(0,1);
+    
+    //The likelihood
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+    //The generated data
+
+    vector[hosts] mnk_pos;
+    vector[hosts] y_sim;
+    for(i in 1:hosts){
+      mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+      y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+We'll start with priors centered around 1e-01.
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration, it_mean=1e-01,it_sd=1e-02,mu_mean=1e-01,mu_sd=1e-02,sigma_mean=1e-01,sigma_sd=1e-02,n_mean=1e-01,n_sd=1e-02)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example 
+Warning messages:
+1: There were 1000 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+2: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit, digits=15, pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: ec3b1c7cc65698d9b2066abebcd11dc7.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                   mean     se_mean          sd        2.5%        25%
+intercept[1] 0.09829403 0.003596893 0.005091869 0.091665626 0.09428901
+mu[1]        0.01840036 0.005739781 0.008125405 0.009967075 0.01048759
+sigma[1]     0.05489722 0.015437187 0.021853344 0.027403533 0.04174195
+noise[1]     0.09652314 0.003947253 0.005587849 0.089066477 0.09278353
+                    50%        75%      97.5% n_eff     Rhat
+intercept[1] 0.09863813 0.10264314 0.10423422     2 17184485
+mu[1]        0.01806983 0.02598260 0.02749471     2 28908707
+sigma[1]     0.05226895 0.06542422 0.08764745     2 83600964
+noise[1]     0.09647069 0.10021029 0.10408471     2 25321492
+
+Samples were drawn using NUTS(diag_e) at Thu Jun 13 16:40:10 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mh1_nh2_e-01_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mh1_nh2_e-01_prior.png]]
+
+Surprisingly, the results are completely off, and the prior apparently
+counts a lot in the posterior, despite the amount of data. We need to
+try with a smaller prior.
+
+***** TODO With a M_H-2 N_H-2 model
