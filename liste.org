@@ -1,4 +1,0 @@
-* Tasks
-** TODO Try with more difficult models: with heterogeneity...
-   - For the third, we need to have several coefficients and intercepts
-     (and perhaps noise, probably will do later in a 4th experiment)
