@@ -1,0 +1,329 @@
+\def\raggedright{}
+% Created 2019-06-20 jeu. 19:11
+% Intended LaTeX compiler: lualatex
+\documentclass[10pt,presentation,xcolor={usenames,dvipsnames,svgnames,table}]{beamer}
+\usepackage{figlatex}
+
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usedescriptionitemofwidthas{bl}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{figlatex}
+\usepackage[french, english]{babel}
+%\usepackage{DejaVuSansMono}
+\usepackage{ifthen,amsmath,amstext,gensymb,amssymb}
+\usepackage{boxedminipage,xspace,multicol}
+%%%%%%%%% Begin of Beamer Layout %%%%%%%%%%%%%
+\ProcessOptionsBeamer
+\usetheme[numbering=fraction,titleformat=smallcaps,progressbar=frametitle]{metropolis}
+\usepackage{fontawesome}
+\usecolortheme[named=BrickRed]{structure}
+%%%%%%%%% End of Beamer Layout %%%%%%%%%%%%%
+\usepackage{verbments}
+\usepackage{xcolor}
+\usepackage{color}
+\usepackage{url} \urlstyle{sf}
+\let\alert=\structure % to make sure the org * * works of tools
+%\let\tmptableofcontents=\tableofcontents
+%\def\tableofcontents{}
+\usepackage[normalem]{ulem}
+\usepackage{color,soul}
+\definecolor{lightorange}{rgb}{1,.9,.7}
+\sethlcolor{lightorange}
+\definecolor{lightgreen}{rgb}{.7,.9,.7}
+\let\hrefold=\href
+\renewcommand{\href}[2]{\hrefold{#1}{\SoulColor{lightorange}\hl{#2}}}
+% \renewcommand{\uline}[1]{\SoulColor{lightorange}\hl{#1}}
+\renewcommand{\emph}[1]{\SoulColor{lightorange}\hl{#1}}
+\makeatletter
+\newcommand\SoulColor[1]{%
+\sethlcolor{#1}%
+\let\set@color\beamerorig@set@color%
+\let\reset@color\beamerorig@reset@color}
+\makeatother
+\let\oldtexttt=\texttt
+% \renewcommand\texttt[1]{\SoulColor{lightgreen}\hl{\tt#1}}
+% \renewcommand\alert[1]{\SoulColor{lightgreen}\hl{#1}}
+% \AtBeginSection{\begin{frame}{Outline}\tableofcontents\end{frame}}
+\graphicspath{{fig/}}
+\usepackage{tikzsymbols}
+\def\smiley{\Smiley[1][green!80!white]}
+\def\frowny{\Sadey[1][red!80!white]}
+\def\winkey{\Winkey[1][yellow]}
+\usetheme{default}
+\author{Hoël Jalmin \newline Tutored by Arnaud Legrand and Tom Cornebize}
+\date{The 21th of June, 2019}
+\title{Modeling computation kernels with Stan}
+\hypersetup{
+ pdfauthor={Hoël Jalmin \newline Tutored by Arnaud Legrand and Tom Cornebize},
+ pdftitle={Modeling computation kernels with Stan},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 25.2.2 (Org mode 9.1.6)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\newcommand{\myfbox}[2][gray!20]{\bgroup\scalebox{.7}{\colorbox{#1}{{\vphantom{pS}#2}}}\egroup} % \fbox
+%\def\myfbox#1{#1} % \fbox
+\def\HPC{\myfbox[gray!40]{HPC}}
+\def\NET{\myfbox[gray!40]{Network}}
+\def\SG{\myfbox[gray!40]{Smart Grids}}
+\def\ECO{\myfbox[gray!40]{Economics}}
+\def\PRIV{\myfbox[gray!40]{Privacy}}
+\def\TRACING{\myfbox[red!20]{Tracing}}
+\def\SIM{\myfbox[green!20]{Simulation}}
+\def\VIZ{\myfbox[red!40]{Visualization}}
+\def\MODELING{\myfbox[green!40]{Stochastic Models}}
+\def\OPT{\myfbox[blue!20]{Optimization}}
+\def\GT{\myfbox[blue!40]{Game Theory}}
+
+
+\def\changefont#1{%
+  \setbeamertemplate{itemize/enumerate body begin}{#1}
+  \setbeamertemplate{itemize/enumerate subbody begin}{#1}
+  #1}
+\makeatletter
+\newcommand{\verbatimfont}[1]{\renewcommand{\verbatim@font}{\ttfamily#1}}
+\makeatother
+\verbatimfont{\scriptsize}%small
+\let\endmintedbak=\endminted
+\def\endminted{\endmintedbak\vspace{-1cm}}
+
+\newcommand{\Norm}{\ensuremath{\mathcal{N}}\xspace}
+\newcommand{\Unif}{\ensuremath{\mathcal{U}}\xspace}
+\newcommand{\Triang}{\ensuremath{\mathcal{T}}\xspace}
+\newcommand{\Exp}{\ensuremath{\mathcal{E}}\xspace}
+\newcommand{\Bernouilli}{\ensuremath{\mathcal{B}}\xspace}
+\newcommand{\Like}{\ensuremath{\mathcal{L}}\xspace}
+\newcommand{\Model}{\ensuremath{\mathcal{M}}\xspace}
+\newcommand{\E}{\ensuremath{\mathbb{E}}\xspace}
+\def\T{\ensuremath{\theta}\xspace}
+\def\Th{\ensuremath{\hat{\theta}}\xspace}
+\def\Tt{\ensuremath{\tilde{\theta}}\xspace}
+\def\Y{\ensuremath{y}\xspace}
+\def\Yh{\ensuremath{\hat{y}}\xspace}
+\def\Yt{\ensuremath{\tilde{y}}\xspace}
+\let\epsilon=\varepsilon
+\let\leq=\leqslant
+\let\geq=\geqslant
+
+\begin{frame}[label={sec:org50187fb}]{Introduction}
+A faire: refaire les images
+\end{frame}
+\begin{frame}[label={sec:org8f66080}]{Context}
+With the current need for high performance computing, and the hardware
+complexity:
+\begin{itemize}
+\item How to predict the duration of calculations?
+\item How to detect performance anomaly?
+\end{itemize}
+
+\begin{block}{For this talk:}
+\begin{enumerate}
+\item Brief presentation of the context
+\item Introduction to Bayesian sampling
+\item Examples of application
+\end{enumerate}
+\end{block}
+\end{frame}
+
+\begin{frame}[label={sec:orgdbf994e}]{Background on HPC and Polaris research}
+\begin{block}{Modern context}
+\begin{itemize}
+\item HPC systems use thousands of nodes, cache, hyperthreading, etc \(\rightarrow\) makes it difficult to predict performance
+\item Some functions (like DGEMM in the BLAS library) are used
+everywhere, and called thousands of times in a program.
+\end{itemize}
+\end{block}
+
+\begin{block}{Previous work}
+\begin{itemize}
+\item Simulating high performance programs to optimize them at a
+lesser cost
+\item Elaborated complex models but needed to evaluate and confirm the models
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[label={sec:org0e686e7}]{Bayes model}
+\begin{description}
+\item[{Model}] Let's say \(y \sim \Norm(\alpha*x+\beta,\sigma)\)
+\begin{itemize}
+\item \alert{\(\alpha,\beta,\sigma\)}: Model \alert{parameters}
+\item \alert{\(y\)}: Dependent \alert{data} (posterior)
+\item \alert{\(x\)}: Independent data
+\end{itemize}
+We observe some data and need to find model parameters
+\end{description}
+
+\begin{block}{The vocabulary}
+\begin{itemize}
+\item \alert{Posterior}: The distribution of the parameters
+\item \alert{Likelihood}: A function of the parameters, the model
+\item \alert{Prior}: Existing knowledge of the system, guesses on the parameters
+values (\(\sigma\)>0 per example)
+\end{itemize}
+\end{block}
+\end{frame}
+
+\section{A Bayesian Sampler, Stan}
+\label{sec:org55b1b22}
+\begin{frame}[label={sec:org26922c7}]{With a simple example}
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/ex1_figure.png}
+\end{center}
+Using this data, we'll try to find the parameters that were used to
+generate it.
+\end{frame}
+
+\begin{frame}[fragile,label={sec:org44a720b}]{The Stan model}
+ \begin{verbatim}
+library(rstan)
+
+modelString = "data { // the observations
+    int<lower=1> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real beta;
+    real alpha;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+} 
+model {
+    // We define our priors
+    beta   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
+    alpha ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+
+    // Then, our likelihood function
+    y ~ normal(alpha*x + beta, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+\end{verbatim}
+\end{frame}
+\begin{frame}[label={sec:org843318e}]{Checking the convergence}
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/ex1_stan_trace.png}
+\end{center}
+\end{frame}
+\begin{frame}[label={sec:orgddc9d7e}]{Looking at the histogram of the parameters}
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/ex1_stan_hist.png}
+\end{center}
+\end{frame}
+
+\begin{frame}[label={sec:orgc981b7e}]{The importance of the priors}
+\begin{itemize}
+\item The priors are necessary to have convergence in the fit
+\item Non-informative prior vs informative (careful not to have a falsely
+informative one and introduce bias)
+\item A little bit of precision is better, but initialisation values can
+do the trick
+\end{itemize}
+\end{frame}
+\section{The different models for dgemm}
+\label{sec:orge540abd}
+\begin{frame}[label={sec:org1c40864}]{Spatial and temporal variability}
+\begin{itemize}
+\item DGEMM's duration depends on the matrix size, but also on the CPU
+used to run it
+\end{itemize}
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/duration_on_mnk_paper.png}
+\end{center}
+\begin{itemize}
+\item There is also some residual noise coming from the system
+\end{itemize}
+\end{frame}
+\begin{frame}[label={sec:orgc50557d}]{The possible models}
+Different possible models to account for the variabilities, some more accurate than others:
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/models_paper.png}
+\end{center}.
+(Source: Tom Cornebize, Arnaud Legrand, Franz Heinrich. Fast and Faithful Performance Prediction of MPI
+Applications: the HPL Case Study. 2019. ffhal-02096571v2f)
+\end{frame}
+\begin{frame}[label={sec:orgc6d6866}]{A polynomial model with noise depending on x}
+Like a linear model but with more parameters (in this case 10).
+
+The model follows this: 
+
+\(duration \sim \Norm(\mu[1]*mnk+\mu[2]*mn+\mu[3]*mk+\mu[4]*nk+\mu[5], 
+\sigma[1]*mnk+\sigma[2]*mn+\sigma[3]*mk+\sigma[4]*nk+\sigma[5])\)
+\end{frame}
+
+\begin{frame}[label={sec:orge5077af}]{The generated data}
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/generated_quantities_dgemm_m-2_second_test.png}
+\end{center}
+\end{frame}
+\begin{frame}[label={sec:org5ad6ba0}]{The same model with parameters depending on the host}
+\begin{itemize}
+\item Much like the previous model, but with different observations for
+each host
+\item Added a variable for the number of hosts, and used matrices instead
+of vectors for all the parameters.
+\end{itemize}
+
+For this model we have:
+
+\(duration[i] \sim \Norm(\mu[i,1]*mnk+\mu[i,2]*mn+\mu[i,3]*mk+\mu[i,4]*nk+\mu[i,5], 
+\sigma[i,1]*mnk+\sigma[i,2]*mn+\sigma[i,3]*mk+\sigma[i,4]*nk+\sigma[i,5])\)
+\end{frame}
+
+\begin{frame}[label={sec:orgf079e25}]{A hierarchical linear model}
+\begin{itemize}
+\item Useful to find the value of hyperparameters from which we get the parameters
+\item From this we could calculate new parameters for new CPUs
+\item Here \(\mu\)\_\(\alpha\) and \(\sigma\)\_\(\alpha\) are the hyperparameters for \(\alpha\), and
+the same goes for the other parameters
+\end{itemize}
+
+\(\mu_\alpha \sim \Norm\)(\(\alpha\)\_moy,\(\alpha\)\_sd) with \(\alpha\)\_moy and \(\alpha\)\_sd the priors
+
+\(\sigma_\alpha \sim \Norm(0,1)\)
+
+\(\alpha[i] \sim \Norm(\mu_\alpha, \sigma_\alpha)\)
+
+\(duration[i] \sim \Norm(\alpha[i]*mnk + \beta[i], \theta[i]*mnk + \gamma[i])\)
+\end{frame}
+
+\begin{frame}[label={sec:orge4a434d}]{Posterior visualisation}
+The posterior with models depending on the host shows a lot of
+difference between hosts (here we have 3 "average" CPU and a slow one):
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/intercept_on_mu_posterior.png}
+\end{center}
+\end{frame}
+\begin{frame}[label={sec:orgaa59fbc}]{Posterior visualisation}
+If we look at the means of the parameters' values for each host, we
+get a range of values in which most hosts are.
+
+\begin{center}
+\includegraphics[width=.9\linewidth]{./images/mu_on_intercept_means.png}
+\end{center}
+\end{frame}
+
+\begin{frame}[label={sec:orge70a6df}]{Conclusion}
+\end{frame}
+\begin{frame}[label={sec:orgb902731}]{Following up work}
+\begin{itemize}
+\item Modeling other calculation kernels
+\item Modeling the network communications
+\item Parsing and converting Stan code to C, to generate new data more efficiently
+\item Anomaly detection
+\end{itemize}
+\end{frame}
+\end{document}
