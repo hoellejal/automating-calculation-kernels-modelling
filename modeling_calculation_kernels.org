@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # -*- mode: org -*-
-#+Title:  Modeling calculation kernels
+#+Title:  Modeling calculation kernels with Stan
 #+Author: Hoël Jalmin \newline Tutored by Arnaud Legrand and Tom Cornebize
 #+DATE: The 21th of June, 2019
 #+LANGUAGE: en
@@ -137,7 +137,7 @@ complexity:
 
 ** Background on HPC and Polaris research
 *** Modern context
-  - HPC systems use thousands of nodes, multiple levels of cache, hyperthreading, etc -> makes it difficult to predict performance
+  - HPC systems use thousands of nodes, cache, hyperthreading, etc -> makes it difficult to predict performance
   - Some functions are used everywhere, and called thousands of times
 
 *** Polaris research
@@ -147,12 +147,11 @@ complexity:
 
 ** HPL simulation
 *** Examples
-  - The blas library is used by thousands of programs and constitutes
+  - The blas library (especially matrix per matrix multiplication) is used by thousands of programs and constitutes
     most of HPL calculations.
   - Performance variability is also caused by network communications
   - Needs to check the models with bayesian sampling.
 
-* Bayesian Statistics
 ** Bayes model
 - Model :: Let's say $y \sim \Norm(\mu,\sigma)$
   - *$\mu$*: Model *parameters*
@@ -167,8 +166,6 @@ complexity:
     values
 $\boxed{\underbrace{p(\mu|y,\sigma)}_{\text{\alert{Posterior}}} \propto \underbrace{p(y|\mu,\sigma)}_{\text{\alert{Likelihood}}}\underbrace{p(\mu,\sigma)}_{\text{\alert{Prior}}}}$
   assuming $y \sim \Model(\mu,\sigma)$
-
-** TODO Bayesian Sampling
 
 * A Bayesian Sampler, Stan
 ** With a simple example
@@ -280,16 +277,142 @@ stan_trace(fit)
 
 #+RESULTS:
 [[file:./images/ex1_stan_trace.png]]
+** Generating new data
+- Generating new data to check the results and model's accuracy.
 
-** TODO Generating new data
-** TODO A polynomial model with specific noise 
-** TODO A model depending on the host
-** TODO A hierarchical model
-** TODO The importance of the priors
-** TODO Posterior visualisation
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=1> N;
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real coefficient;
+    real<lower=0> sigma;
+} 
+model {
+    intercept   ~ normal(0, 10);
+    coefficient ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+    y ~ normal(coefficient*x + intercept, sigma);
+}
+generated quantities {
+   real x_pos = x[categorical_rng(rep_vector(1,N) / N)];
+   real y_pos; // posterior predictions
+   y_pos = normal_rng(coefficient*x_pos+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+
+#+end_src
+
+** Plotting the new data
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+df_generated = data.frame(x=extracted$x_pos, y=extracted$y_pos, origin='generated')
+ggplot(tmp, aes(x=x, y=y, color=origin)) + geom_point(alpha=0.5)
+#+end_src
+
+[[file:./images/ex3_reworked_comparative_plot.png]]
+
+** The importance of the priors
+- The priors are necessary to have convergence in the fit
+- Non-informative prior vs informative (careful not to have a falsely
+  informative one and introduce bias)
+- A little bit of precision is better, but initialisation values can
+  make the trick
+* The different models for dgemm
+** The theory behind it
+- Dgemm's duration depends on the matrix size, but also on the CPU
+  used to run it
+[[file:./images/dgemm_duration_on_mnk_restrained.png]]
+** The possible models
+Different possible models, some more accurate than others:
+[[file:./images/models_paper.png]]
+** A M-2 N-2 model (polynomial with noise depending on x) 
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] mnk;
+    vector[N] duration;
+    vector[5] mu_mean; //the priors for mu and sigma
+    vector[5] mu_sd;
+    vector[5] sigma_mean;
+    vector[5] sigma_sd;
+}
+parameters {
+    vector[5] mu_raw; vector[5] sigma_raw;
+}
+transformed parameters {
+    vector[5] mu; vector[5] sigma;
+    for(j in 1:5){
+      mu[j] = mu_mean[j] + mu_raw[j] * mu_sd[j];
+      sigma[j] = sigma_mean[j] + sigma_raw[j] * sigma_sd[j];}
+}
+model {
+    mu_raw ~ normal(0,1); sigma_raw ~ normal(0,1);
+    duration ~ normal(mu[1]*mnk + mu[2]*mn + mu[3]*mk + mu[4]*nk + mu[5], 
+    sigma[1]*mnk + sigma[2]*mn + sigma[3]*mk + sigma[4]*nk + sigma[5]);
+}
+"
+#+end_src
+
+** The generated data 
+[[file:./images/generated_quantities_dgemm_m-2_second_test.png]]
+** A M_H-2 N_H-2 model (depending on the host)
+- Much like the previous model, but with different observations for
+  each host
+- Added a variable for the number of hosts, and used matrixes instead
+  of vectors for all the parameters.
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int hosts;
+}
+parameters {
+    matrix[hosts,5] mu_raw; 
+    matrix[hosts,5] sigma_raw;
+}
+transformed parameters {
+    matrix[hosts,5] mu; 
+    matrix[hosts,5] sigma;
+}
+model {
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i,1]*mnk[i]+mu[i,2]*mn[i]+mu[i,3]*mk[i]+
+      mu[i,4]*nk[i]+mu[i,5], sigma[i,1]*mnk[i]+sigma[i,2]*mn[i]+
+      sigma[i,3]*mk[i]+sigma[i,4]*nk[i]+sigma[i,5]);}
+}
+"
+#+end_src
+** A hierarchical M_H-1 N_H-2 model
+- Useful to find the value of hyperparameters from which we get the parameters
+- From this we could calculate new parameters for new CPUs
+- Here \mu-alpha and \sigma-alpha are the hyperparameters for alpha, and
+  the same goes for the other parameters
+
+$\mu-alpha \sim \Norm(alpha_\mu,alpha_\sigma)$ with alpha_\mu and alpha_\sigma the priors
+
+$\sigma-alpha \sim \Norm(0,1)$
+
+$alpha[i] \sim \Norm(\mu-alpha, \sigma-alpha)$
+
+$duration[i] \sim \Norm(alpha[i]*mnk + beta[i], teta[i]*mnk + gamma[i])$
+
+** Posterior visualisation
+The posterior with models depending on the host shows a lot of
+difference between hosts (here we have 3 "average" CPU and a slow one):
+
+[[file:./images/intercept_on_mu_posterior.png]]
+** Posterior visualisation
+
+If we look at the means of the parameters' values for each host, we
+get a range of values in which most hosts are.
+
+[[file:./images/mu_on_intercept_means.png]]
+
 ** The follow up
-
-- Possibilities ::
   - Modeling other calculation kernels
   - Modeling the network communications
   - Parsing and converting Stan code to C, to generate new data more efficiently

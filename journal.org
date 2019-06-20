@@ -6159,6 +6159,16 @@ model {
       duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
     }
 }
+generated quantities {
+    //The generated data
+
+    vector[hosts] mnk_pos;
+    vector[hosts] y_sim;
+    for(i in 1:hosts){
+      mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+      y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+    }
+}
 "
 sm = stan_model(model_code = modelString)
 #+end_src
@@ -7260,7 +7270,7 @@ sm = stan_model(model_code = modelString)
 The non centered parameterisation makes it a little complicated to
 read, but we essentially have:
 
-mu_alpha ~ normal(alpha_mean,alpha_sd) with alpha_mean and alpha_sd our
+mu_alpha ~ normal(alpha_mean, alpha_sd) with alpha_mean and alpha_sd our
 priors
 
 sigma_alpha ~ normal(0,1)
@@ -7336,3 +7346,152 @@ compilation despite installing a lot of dependencies.
 **** Worked on the slides for friday
 With the help of Tom who debugged our LateX issues, we tried our hand
 again at making slides with org-mode, using Arnaud's model.
+*** 2019-06-20 thursday
+**** Finished the slides
+**** Plotting the posterior with a M_H-1 N_H-2 model
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+    int<lower=0> N; //number of observations
+    int hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    //The raw parameters
+
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector<lower=0>[hosts] sigma_raw;
+    vector<lower=0>[hosts] noise_raw;
+}
+transformed parameters {
+    //The real parameters
+
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector<lower=0>[hosts] sigma;
+    vector<lower=0>[hosts] noise;
+   
+    //The priors for the real parameters
+
+    intercept=it_mean + intercept_raw * it_sd;
+    mu=mu_mean + mu_raw * mu_sd;
+    sigma=sigma_mean + sigma_raw * sigma_sd;
+    noise= n_mean + noise_raw * n_sd;
+}
+model {
+    //The priors for the raw parameters
+
+    intercept_raw ~ normal(0,1);
+    mu_raw ~ normal(0,1);
+    sigma_raw ~ normal(0,1);
+    noise_raw ~ normal(0,1);
+    
+    //The likelihood
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+    //The generated data
+
+    vector[hosts] mnk_pos;
+    vector[hosts] y_sim;
+    for(i in 1:hosts){
+      mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+      y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,it_mean=1e-05,it_sd=1e-06,mu_mean=1e-10,mu_sd=1e-11,sigma_mean=1e-10,sigma_sd=1e-11,n_mean=1e-05,n_sd=1e-06)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit, digits=15,pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: aac275819ace426708b4ce4313ed739c.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                     mean      se_mean           sd          2.5%           25%
+intercept[1] 9.543856e-06 4.586447e-07 2.048894e-05 -2.937878e-05 -4.331748e-06
+mu[1]        7.036400e-11 1.140000e-13 4.623000e-12  6.139800e-11  6.733000e-11
+sigma[1]     1.002050e-10 5.000000e-15 2.020000e-13  1.000060e-10  1.000620e-10
+noise[1]     2.554964e-05 3.291607e-07 1.182350e-05  1.078725e-05  1.593036e-05
+                      50%          75%        97.5% n_eff      Rhat
+intercept[1] 1.010669e-05 2.381342e-05 4.862562e-05  1996 0.9991379
+mu[1]        7.043300e-11 7.350200e-11 7.887600e-11  1634 0.9970547
+sigma[1]     1.001470e-10 1.002860e-10 1.007090e-10  1752 0.9978440
+noise[1]     2.303954e-05 3.259384e-05 5.371958e-05  1290 1.0007677
+
+Samples were drawn using NUTS(diag_e) at Thu Jun 20 13:03:15 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Compared to the previous results:
+
+#+RESULTS:
+#+begin_example
+                     mean      se_mean           sd         2.5%          25%
+intercept[1] 7.677801e-07 1.455665e-09 7.648153e-08 6.207045e-07 7.144779e-07
+mu[1]        7.027000e-11 4.000000e-15 2.130000e-13 6.986600e-11 7.013200e-11
+sigma[1]     4.634000e-12 1.000000e-15 9.300000e-14 4.446000e-12 4.571000e-12
+noise[1]     7.424895e-07 1.283709e-09 7.598378e-08 5.971960e-07 6.907532e-07
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+dtf=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
+cpu=1:64
+ggplot(dtf,aes(x=intercept,y=mu)) + stat_ellipse() + geom_point(aes(color=factor(cpu)))
+#+end_src
+
+#+RESULTS:
+
+
+dtf=data.frame(intercept=extracted$intercept,mu=extracted$mu,sigma=extracted$sigma)
