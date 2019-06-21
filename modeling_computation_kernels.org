@@ -124,17 +124,15 @@
 #+BEGIN_EXPORT latex
 #+END_EXPORT
 
-** TODO Introduction
-A faire: refaire les images
-** Context
+** Introduction
 With the current need for high performance computing, and the hardware
 complexity:
-- How to predict the duration of calculations?
-- How to detect performance anomaly?
+- How to predict the duration of computations?
+- How to quantify incertainty?
 
 *** For this talk:
 1. Brief presentation of the context
-2. Introduction to Bayesian sampling
+2. Introduction to Bayesian sampling through Stan
 3. Examples of application
    
 ** Background on HPC and Polaris research
@@ -146,8 +144,8 @@ complexity:
 *** Previous work
   - Simulating high performance programs to optimize them at a
     lesser cost
-  - Elaborated complex models but needed to evaluate and confirm the models
-
+  - Elaborated complex models within a few percent of reality but
+    needed to evaluate and confirm them
 ** Bayes model
 - Model :: Let's say $y \sim \Norm(\alpha*x+\beta,\sigma)$
   - *$\alpha,\beta,\sigma$*: Model *parameters*
@@ -178,6 +176,37 @@ Using this data, we'll try to find the parameters that were used to
 generate it.
 
 ** The Stan model
+#+begin_src R :results output :session *R* :exports none
+library(rstan)
+
+modelString = "data { // the observations
+    int<lower=1> N; // number of points
+    vector[N] x;
+    vector[N] y;
+}
+parameters { // what we want to find
+    real intercept;
+    real coefficient;
+    real<lower=0> sigma; // indication: sigma cannot be negative
+} 
+model {
+    // We define our priors
+    intercept   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
+    coefficient ~ normal(0, 10);
+    sigma       ~ normal(0, 10);
+
+    // Then, our likelihood function
+    y ~ normal(coefficient*x + intercept, sigma);
+}
+generated quantities {
+   real x_pos = x[categorical_rng(rep_vector(1,N) / N)];
+   real y_pos; // posterior predictions
+   y_pos = normal_rng(coefficient*x_pos+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
 #+begin_src R :results output :session *R* :exports both
 library(rstan)
 
@@ -193,7 +222,7 @@ parameters { // what we want to find
 } 
 model {
     // We define our priors
-    beta   ~ normal(0, 10); // We know that all the parameters follow a normal distribution
+    beta   ~ normal(0, 10);
     alpha ~ normal(0, 10);
     sigma       ~ normal(0, 10);
 
@@ -203,11 +232,14 @@ model {
 "
 sm = stan_model(model_code = modelString)
 #+end_src
-** Checking the convergence
-#+RESULTS:
-[[file:./images/ex1_stan_trace.png]]
-** Looking at the histogram of the parameters
-[[file:./images/ex1_stan_hist.png]]
+
+** Looking at the posterior
+
+[[file:./images/ex1_pairs.png]]
+
+** Looking at the generated data
+
+[[file:./images/ex1_generated_data.png]]
 
 ** The importance of the priors
 - The priors are necessary to have convergence in the fit
@@ -217,26 +249,26 @@ sm = stan_model(model_code = modelString)
   do the trick
 * The different models for dgemm
 ** Spatial and temporal variability
-- DGEMM's duration depends on the matrix size, but also on the CPU
-  used to run it
+- DGEMM's duration depends on the matrix size, on the CPU
+  used to run it, and on residual noise coming from the system.
 [[file:./images/duration_on_mnk_paper.png]]
-- There is also some residual noise coming from the system
 ** The possible models
-Different possible models to account for the variabilities, some more accurate than others:
+(Source: Fast and Faithful Performance Prediction of MPI Applications:
+the HPL Case Study)
 [[file:./images/models_paper.png]].
-(Source: Tom Cornebize, Arnaud Legrand, Franz Heinrich. Fast and Faithful Performance Prediction of MPI
-Applications: the HPL Case Study. 2019. ffhal-02096571v2f)
-** A polynomial model with noise depending on x 
+
+** Model 1 : A polynomial model with noise depending on x 
+A redo of the last model presented before, using Stan.
 Like a linear model but with more parameters (in this case 10).
 
 The model follows this: 
 
-$duration \sim \Norm(\mu[1]*mnk+\mu[2]*mn+\mu[3]*mk+\mu[4]*nk+\mu[5], 
-\sigma[1]*mnk+\sigma[2]*mn+\sigma[3]*mk+\sigma[4]*nk+\sigma[5])$
+$duration \sim \Norm(\alpha_1*mnk+\alpha_2*mn+\alpha_3*mk+\alpha_4*nk+\beta , \\
+\gamma_1*mnk+\gamma_2*mn+\gamma_3*mk+\gamma_4*nk+\delta)$
 
 ** The generated data 
 [[file:./images/generated_quantities_dgemm_m-2_second_test.png]]
-** The same model with parameters depending on the host
+** Model 2 : A model with parameters depending on the host
 - Much like the previous model, but with different observations for
   each host
 - Added a variable for the number of hosts, and used matrices instead
@@ -244,22 +276,8 @@ $duration \sim \Norm(\mu[1]*mnk+\mu[2]*mn+\mu[3]*mk+\mu[4]*nk+\mu[5],
 
 For this model we have:
 
-$duration[i] \sim \Norm(\mu[i,1]*mnk+\mu[i,2]*mn+\mu[i,3]*mk+\mu[i,4]*nk+\mu[i,5], 
- \sigma[i,1]*mnk+\sigma[i,2]*mn+\sigma[i,3]*mk+\sigma[i,4]*nk+\sigma[i,5])$
-
-** A hierarchical linear model
-- Useful to find the value of hyperparameters from which we get the parameters
-- From this we could calculate new parameters for new CPUs
-- Here \mu_\alpha and \sigma_\alpha are the hyperparameters for \alpha, and
-  the same goes for the other parameters
-
-$\mu_\alpha \sim \Norm$(\alpha_moy,\alpha_sd) with \alpha_moy and \alpha_sd the priors
-
-$\sigma_\alpha \sim \Norm(0,1)$
-
-$\alpha[i] \sim \Norm(\mu_\alpha, \sigma_\alpha)$
-
-$duration[i] \sim \Norm(\alpha[i]*mnk + \beta[i], \theta[i]*mnk + \gamma[i])$
+$duration[i] \sim \Norm(\alpha_1[i]*mnk+\alpha_2[i]*mn+\alpha_3[i]*mk+\alpha_4[i]*nk+\beta[i] , \\
+ \gamma_1[i]*mnk+\gamma_2[i]*mn+\gamma_3[i]*mk+\gamma_4[i]*nk+\delta[i])$
 
 ** Posterior visualisation
 The posterior with models depending on the host shows a lot of
@@ -273,9 +291,26 @@ get a range of values in which most hosts are.
 
 [[file:./images/mu_on_intercept_means.png]]
 
-** TODO Conclusion
-** Following up work
-  - Modeling other calculation kernels
-  - Modeling the network communications
-  - Parsing and converting Stan code to C, to generate new data more efficiently
-  - Anomaly detection
+** Model 3 : A hierarchical linear model
+- Useful to find the value of hyperparameters from which we get the parameters
+- From this we could calculate new parameters for new CPUs
+- Here \mu_\alpha and \sigma_\alpha are the hyperparameters for \alpha, and
+  the same goes for the other parameters
+
+$\mu_\alpha \sim \Norm$(\alpha_moy,\alpha_sd) with \alpha_moy and \alpha_sd the priors
+
+$\sigma_\alpha \sim \Norm(0,1)$
+
+$\alpha[i] \sim \Norm(\mu_\alpha, \sigma_\alpha)$
+
+$duration[i] \sim \Norm(\alpha[i]*mnk + \beta[i], \gamma[i]*mnk + \delta[i])$
+
+** Conclusion
+*** My contribution
+- Created several models to represent the performance of a computation
+  kernel within a few percent of reality
+- Model adaptable to changes (addition/removal of CPUs)
+*** Following up work
+  - Implementing this work in Simgrid research (other computation
+    kernels, network communications, etc)
+  - Novelty detection and non regression performance tests

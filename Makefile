@@ -5,8 +5,8 @@ LUALATEX_OPTIONS=-shell-escape
 
 all:
 	export PYTHONIOENCODING=utf-8
-	make modeling_calculation_kernels.tex
-	make modeling_calculation_kernels.pdf
+	make modeling_computation_kernels.tex
+	make modeling_computation_kernels.pdf
 #	make fix_figures
 #	make bayesian_statistics_introduction.pdf
 

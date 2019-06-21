@@ -369,16 +369,16 @@ head(df)
 #+end_src
 
 #+RESULTS:
-:  
-:    x           y
-: 1 71  -89.970034
-: 2 19   34.653228
-: 3 11   47.257220
-: 4 84 -105.552794
-: 5 34  -12.029547
-: 6 30   -2.636534
+: 
+:    x          y
+: 1 39  -19.54860
+: 2 50  -29.93333
+: 3 35  -16.09060
+: 4 86 -138.30809
+: 5  7   32.59304
+: 6  3   20.94527
 
-#+begin_src R :results output graphics :file ./images/ex1_figure.png :exports both :width 600 :height 400 :session *R* 
+#+begin_src R :results output graphics :file ./images/ex1_figure.png :exports both :width 800 :height 530 :session *R* 
 library(ggplot2)
 ggplot(df, aes(x=x, y=y))+geom_point(alpha=0.3)
 #+end_src
