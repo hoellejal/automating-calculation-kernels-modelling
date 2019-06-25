@@ -7266,6 +7266,7 @@ t_i[[1]]=sample_n(select(filter(tmp, tmp$cpu==2), c("m","n","k", "mnk", "duratio
 m=lapply(t_i, '[[', 1)
 n=lapply(t_i, '[[', 2)
 k=lapply(t_i, '[[', 3)
+mnk=lapply(t_i, '[[', 4)
 duration=lapply(t_i, '[[', 5)
 #+end_src
 
@@ -7507,7 +7508,129 @@ stan_trace(fit, pars=c("mu","sigma"))
 
 #+RESULTS:
 [[file:./images/trace_mh2_nh2_chosen_prior.png]]
-****** TODO With a precise prior and a larger sd
+****** With a precise prior and a larger sd
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=1,m=m,n=n,k=k,duration=duration,mu_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),mu_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05),sigma_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),sigma_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05))
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example 
+Chain 1:  Elapsed Time: 5.50737 seconds (Total)
+Chain 2:  Elapsed Time: 5.91885 seconds (Total)
+Chain 3:  Elapsed Time: 6.19891 seconds (Total)
+Chain 4:  Elapsed Time: 5.73701 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit, digits=15, pars=c("mu","sigma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: a845d2ce77b9d1ff9cdea0688f8199c6.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                   mean      se_mean           sd          2.5%           25%
+mu[1,1]    7.008700e-11 1.260000e-13 4.326000e-12  6.158600e-11  6.700600e-11
+mu[1,2]    9.276800e-11 5.937000e-12 1.950150e-10 -2.836770e-10 -3.502000e-11
+mu[1,3]    1.202130e-10 6.749000e-12 2.047230e-10 -3.016620e-10 -1.857700e-11
+mu[1,4]    1.194190e-10 5.955000e-12 2.006460e-10 -2.899310e-10 -1.082200e-11
+mu[1,5]    2.634398e-06 3.322328e-07 9.001298e-06 -1.302938e-05 -3.628384e-06
+sigma[1,1] 1.002170e-10 6.000000e-15 2.180000e-13  1.000060e-10  1.000570e-10
+sigma[1,2] 1.999550e-10 2.538000e-12 8.333800e-11  1.034210e-10  1.366890e-10
+sigma[1,3] 1.980030e-10 2.698000e-12 9.137900e-11  1.035000e-10  1.273310e-10
+sigma[1,4] 2.061400e-10 2.623000e-12 8.090600e-11  1.062230e-10  1.441770e-10
+sigma[1,5] 1.747899e-05 2.122091e-07 7.168165e-06  1.014100e-05  1.205052e-05
+                    50%          75%        97.5% n_eff      Rhat
+mu[1,1]    7.020600e-11 7.308200e-11 7.836800e-11  1187 0.9986222
+mu[1,2]    9.355300e-11 2.195570e-10 4.764880e-10  1079 0.9971954
+mu[1,3]    1.170550e-10 2.699770e-10 5.007740e-10   920 0.9989535
+mu[1,4]    1.238360e-10 2.512340e-10 4.970970e-10  1135 1.0028199
+mu[1,5]    2.264097e-06 7.639541e-06 2.320179e-05   734 0.9988334
+sigma[1,1] 1.001530e-10 1.003020e-10 1.007900e-10  1474 0.9980146
+sigma[1,2] 1.805020e-10 2.380270e-10 4.053590e-10  1079 0.9979361
+sigma[1,3] 1.690130e-10 2.418100e-10 4.363900e-10  1147 1.0019185
+sigma[1,4] 1.887500e-10 2.532760e-10 4.065740e-10   951 1.0006273
+sigma[1,5] 1.536169e-05 2.082715e-05 3.671425e-05  1141 0.9997906
+
+Samples were drawn using NUTS(diag_e) at Tue Jun 25 10:02:12 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Compared to the previous results:
+
+#+RESULTS:
+#+begin_example
+mu[2,1]    6.455300e-11
+mu[2,2]    3.614600e-11
+mu[2,3]    1.854931e-09
+mu[2,4]    3.292596e-09
+mu[2,5]    7.490877e-07
+sigma[2,1] 1.472000e-12
+sigma[2,2] 1.378400e-11
+sigma[2,3] 2.881900e-11
+sigma[2,4] 3.378400e-11
+sigma[2,5] 7.394641e-07
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mh2_nh2_precise_prior_larger_sd.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit, pars=c("mu","sigma"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mh2_nh2_precise_prior_larger_sd.png]]
+
+#+begin_src R :results output graphics :file ./images/generated_data_mh2_less_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+dt=data.frame(mnk=unlist(mnk),duration=unlist(duration))
+extracted=rstan::extract(fit)
+df_generated = data.frame(mnk=extracted$mnk_pos, duration=extracted$y_sim, origin='generated')
+df_generated = df_generated[sample(nrow(df_generated), nrow(dt)), ]
+dt$origin='initial'
+t = rbind(dt, df_generated)
+ggplot(data=t, aes(mnk,duration, color=origin)) + geom_point(alpha=0.5)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_data_mh2_less_precise_prior.png]]
+
+So like before the prior is too vague for the noise to get accurate
+generated data.
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=1,m=m,n=n,k=k,duration=duration,mu_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),mu_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05),sigma_mean=c(1e-12,1e-10,1e-10,1e-10,1e-05),sigma_sd=c(2e-12,2e-10,2e-10,2e-10,2e-05))
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example 
+Chain 1:  Elapsed Time: 39.1144 seconds (Total)
+Chain 2:  Elapsed Time: 39.1154 seconds (Total)
+Chain 3:  Elapsed Time: 32.1437 seconds (Total)
+Chain 4:  Elapsed Time: 36.2384 seconds (Total)
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/generated_data_mh2_more_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+dt=data.frame(mnk=unlist(mnk),duration=unlist(duration))
+extracted=rstan::extract(fit)
+df_generated = data.frame(mnk=extracted$mnk_pos, duration=extracted$y_sim, origin='generated')
+df_generated = df_generated[sample(nrow(df_generated), nrow(dt)), ]
+dt$origin='initial'
+t = rbind(dt, df_generated)
+ggplot(data=t, aes(mnk,duration, color=origin)) + geom_point(alpha=0.5)
+#+end_src
+
+#+RESULTS:
+[[file:./images/generated_data_mh2_more_precise_prior.png]]
+
+So giving a more precise prior to the noise parameter depending on mnk
+seems to be enough to get decent generated data.
+
 *** 2019-06-17 monday
 **** Attended Thanos Andreou's thesis on Auditing, Measuring, and Bringing Transparency to Social Media Advertising Ecosystems
 **** REWORK <<Hierarchical model with independant parameters>>
@@ -7968,4 +8091,136 @@ doesn't make the ellipse smaller since the points are spread out
 according to the sd. What we need to do is get a smaller sd, and that
 is done by having a more precise fit. So we need to try again with
 much bigger samples.
+*** 2019-06-25 tuesday
 **** Plotting the posterior with an even bigger sample
+***** Without init values
+This time we'll try with a sample of 5000 to see if there really is a
+difference. However considering we found out the amount of generated
+data doesn't matter, we'll reduce the number of chains to make the fit
+faster to compute.
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),5000)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=5000,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,it_mean=1e-05,it_sd=1e-05,mu_mean=1e-10,mu_sd=1e-10,sigma_mean=1e-12,sigma_sd=1e-12,n_mean=1e-05,n_sd=1e-05)
+
+fit = sampling(sm,data=dt, iter=500, chains=1)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+v=rep(1:64,each=250)
+dtf=data.frame(intercept=matrix(unlist(extracted$intercept),nrow=length(extracted$intercept),byrow=T), mu=matrix(unlist(extracted$mu), nrow=length(extracted$mu), byrow=T), sigma=matrix(unlist(extracted$sigma), nrow=length(extracted$sigma), byrow=T),cpu=v)
+dtt=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_5000_sample.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(intercept,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(intercept,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_5000_sample.png]]
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_5000_sample.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(sigma,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(sigma,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_5000_sample.png]]
+
+Now there is an actual, visible difference. The general ellipses
+representing the means are clearly getting smaller, more precise, the
+more data we use to make the fit, as well as the ellipses per hosts
+for the sigma graph. The ellipses per host for the intercept seem to
+be getting a bit smaller too, considering the scale of values is
+smaller but it's less visible.
+
+Once again, the ellipses per host for the intercept are still quite
+big (on our scale of values) because of the high standard deviation of
+the fit.
+***** With init values
+This time we'll make the fit with init values to see if it changes
+anything. 
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=5000,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,it_mean=1e-05,it_sd=1e-05,mu_mean=1e-10,mu_sd=1e-10,sigma_mean=1e-12,sigma_sd=1e-12,n_mean=1e-05,n_sd=1e-05)
+
+initfunction=function(){
+  list(intercept=array(rep(1e-07,64)),mu=array(rep(1e-10,64)),sigma=array(rep(1e-10,64)),noise=array(rep(1e-07,64)))
+}
+
+fit = sampling(sm,data=dt, iter=500, chains=1, init=initfunction)
+#+end_src
+
+#+RESULTS:
+#+begin_example 
+Chain 1:  Elapsed Time: 4447.23 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+#+begin_example 
+Inference for Stan model: aac275819ace426708b4ce4313ed739c.
+1 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=250.
+
+                     mean      se_mean           sd          2.5%          25%
+intercept[1] 1.819829e-06          NaN 2.484128e-06 -3.557646e-06 1.294926e-07
+mu[1]        7.039900e-11 6.000000e-15 9.800000e-14  7.022900e-11 7.033000e-11
+sigma[1]     6.880000e-12 1.000000e-15 7.500000e-14  6.743000e-12 6.832000e-12
+noise[1]     1.069511e-05 3.323617e-08 7.004520e-07  1.002201e-05 1.020861e-05
+                      50%          75%        97.5% n_eff      Rhat
+intercept[1] 1.848983e-06 3.408216e-06 7.417282e-06 -8161 0.9961974
+mu[1]        7.039400e-11 7.046500e-11 7.060400e-11   237 0.9982803
+sigma[1]     6.882000e-12 6.928000e-12 7.014000e-12 14367 0.9983067
+noise[1]     1.046894e-05 1.096593e-05 1.244825e-05   444 1.0006727
+
+Samples were drawn using NUTS(diag_e) at Tue Jun 25 11:09:27 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/hist_5000_sample.png :exports both :width 600 :height 400 :session *R* 
+stan_hist(fit,pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_5000_sample.png]]
+
+#+begin_src R :results output :session *R* :exports both
+extracted=rstan::extract(fit)
+v=rep(1:64,each=250)
+dtf=data.frame(intercept=matrix(unlist(extracted$intercept),nrow=length(extracted$intercept),byrow=T), mu=matrix(unlist(extracted$mu), nrow=length(extracted$mu), byrow=T), sigma=matrix(unlist(extracted$sigma), nrow=length(extracted$sigma), byrow=T),cpu=v)
+write.csv(dtf,file="~/Documents/org/fit.csv")
+dtt=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_5000_sample_init_values.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(intercept,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(intercept,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_5000_sample_init_values.png]]
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_5000_sample_init_values.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(sigma,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(sigma,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_5000_sample_init_values.png]]
+
+So with initialisation values the ellipses per host get a little more
+precise, especially for the intercept.
+**** Started using G5K
+Issues with saving the image with the tgz-g5k command
