@@ -8224,3 +8224,379 @@ So with initialisation values the ellipses per host get a little more
 precise, especially for the intercept.
 **** Started using G5K
 Issues with saving the image with the tgz-g5k command
+*** 2019-06-26 wednesday
+**** Figured out how to save an image and redeploy it on a node in G5K
+Considering the nodes are rebooted each time, we want to save an image
+if we have to install several packages (like the latest version of R,
+or Stan).
+
+For that, we have to save the current state of the node in an archive
+using this command (the command is ran directly on the node level,
+not on the frontend): 
+
+#+begin_src sh :results output :exports both
+tgz-g5k -f {{username}}@fgrenoble:/home/{{username}}/{{archive name}}.tgz
+#+end_src
+
+Then we go back to the frontend and create a new environment from the
+debian9-x64-base one:
+
+#+begin_src sh :results output :exports both
+kaenv3 -p debian9-x64-base -u deploy > {{environment name}}.env
+#+end_src
+
+Then we need to change the name, visibility (to private) and tarball
+fields (to ./{{archive name}}.tgz) and then we can deploy the new
+environment provided we have a node to deploy it on (which means we
+have to use the following command before).
+
+#+begin_src sh :results output :exports both
+oarsub -I -t deploy -l nodes=1,walltime={{time in hours}}
+#+end_src
+
+Finally we can deploy the new environment with: 
+
+#+begin_src sh :results output :exports both
+kadeploy3 -f $OAR_NODEFILE -a {{environment name}}.env -k ~/.ssh/authorized_keys
+#+end_src
+
+**** A script to remake the image
+For our image we only need to install stan, which means we need at
+least the version 3.4 of R. Unfortunately, the current version of R in
+the nodes is 3.3. To install the latest version of R (for recent
+packages), we first uninstall the current version, then add the CRAN
+mirror for the latest version and install it again.
+
+The following script runs all the commands we need to remake our
+configuration and save it in an archive.
+
+#+begin_src sh :results output :exports both
+#!/bin/bash
+apt remove r-base
+apt update
+apt autoremove
+sed "5i\deb https://mirror.ibcp.fr/pub/CRAN/bin/linux/debian stretch-cran35/" -i /etc/apt/sources.list
+apt-key adv --keyserver keyserver.ubuntu.com --recv-key 115C3D8A
+apt update
+apt install r-base
+apt --fix-broken install
+su - -c "R -e \"install.packages('rstan')\""
+su - -c "R -e \"install.packages('dplyr')\""
+wget -P ~/ -c https://github.com/Ezibenroc/mpi_calibration/raw/master/dahu/blas/dgemm_calibration.csv
+sed 's/function/func/g' -i ~/dgemm_calibration.csv
+cut -d, -f2,3,4,6,12 ~/dgemm_calibration.csv > ~/dgemm.csv
+tgz-g5k -f hjalmin@fgrenoble:/home/hjalmin/image.tgz
+#+end_src
+
+**** Some tests with generated data for gaussian mixture
+***** With a beta distribution
+We try a simple example of a gaussian mixture following an example
+given by Tom.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+mu = c(-7.6, 7.6)
+sigma = c(1.5, 1)
+lam = 0.4
+N = 1000
+z=rbinom(n=N,size=1,prob=lam)
+y=rnorm(mean=mu[z+1],sigma[z+1])
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/hist_gaussian_mixture.png :exports both :width 600 :height 400 :session *R* 
+hist(y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_gaussian_mixture.png]]
+
+#+begin_src R :results output :session *R* :exports both
+model = "data {
+ int<lower = 0> N;
+ vector[N] y;
+}
+
+parameters {
+  ordered[2] mu;
+  real<lower=0> sigma[2];
+  real<lower=0, upper=1> theta;
+}
+
+model {
+ sigma ~ normal(0, 2);
+ mu ~ normal(0, 2);
+ theta ~ beta(5, 5);
+ for (n in 1:N)
+   target += log_mix(theta,
+                     normal_lpdf(y[n] | mu[1], sigma[1]),
+                     normal_lpdf(y[n] | mu[2], sigma[2]));
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+ft = sampling(sm,data=d, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(ft)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: e0a7cee3725d8c6686197d2e353ef3c3.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+             mean se_mean   sd     2.5%      25%      50%      75%    97.5%
+mu[1]       -7.56    0.00 0.04    -7.64    -7.59    -7.57    -7.54    -7.49
+mu[2]        7.62    0.00 0.05     7.52     7.59     7.63     7.66     7.72
+sigma[1]     1.01    0.00 0.03     0.95     0.99     1.01     1.02     1.07
+sigma[2]     1.02    0.00 0.03     0.95     0.99     1.01     1.04     1.08
+theta        0.59    0.00 0.02     0.56     0.58     0.59     0.60     0.62
+lp__     -2123.46    0.08 1.56 -2127.04 -2124.25 -2123.17 -2122.30 -2121.43
+         n_eff Rhat
+mu[1]      864    1
+mu[2]     1284    1
+sigma[1]   924    1
+sigma[2]   925    1
+theta     1139    1
+lp__       410    1
+
+Samples were drawn using NUTS(diag_e) at Wed Jun 26 15:46:26 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mixture_gaussian.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft)
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mixture_gaussian.png]]
+
+Already we can see a potential problem: the values found for sigma
+seem really centered around 1, despite the fact that sigma[1] is
+supposed to be closer to 1,5. In this case, the actual value of
+sigma[1] is not covered by the estimated values of our fit (between
+0.98 and 1.04). We need to make more tests to look into this.
+
+***** With a dirichlet distribution
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+}
+
+parameters {
+    ordered[2] mu;
+    real<lower=0> sigma[2];
+    simplex[2] theta;
+}
+model {
+    sigma ~ normal(0, 2);
+    mu ~ normal(0, 2);
+    theta ~ dirichlet(rep_vector(2.0, 2));
+
+    // likelihood
+    for(i in 1:N) {
+        vector[2] contributions;
+        for(k in 1:2) {
+            contributions[k] = log(theta[k]) + normal_lpdf(y[i] | mu[k], sigma[k]);
+        }
+        target += log_sum_exp(contributions);
+    }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+ft = sampling(sm,data=d, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(ft)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 822ec751b527a4dace32a9753ec562df.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+             mean se_mean   sd     2.5%      25%      50%      75%    97.5%
+mu[1]       -7.56    0.00 0.04    -7.64    -7.59    -7.56    -7.53    -7.48
+mu[2]        7.62    0.00 0.05     7.53     7.59     7.62     7.65     7.71
+sigma[1]     1.01    0.00 0.03     0.95     0.99     1.01     1.03     1.07
+sigma[2]     1.02    0.00 0.03     0.96     0.99     1.02     1.04     1.09
+theta[1]     0.60    0.00 0.02     0.56     0.58     0.60     0.61     0.63
+theta[2]     0.40    0.00 0.02     0.37     0.39     0.40     0.42     0.44
+lp__     -2119.19    0.07 1.51 -2122.53 -2119.97 -2118.90 -2118.07 -2117.22
+         n_eff Rhat
+mu[1]      898    1
+mu[2]     1111    1
+sigma[1]   929    1
+sigma[2]   868    1
+theta[1]   856    1
+theta[2]   856    1
+lp__       529    1
+
+Samples were drawn using NUTS(diag_e) at Wed Jun 26 16:18:00 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_dirichlet.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft)
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_dirichlet.png]]
+
+We seem to have the same potential issue with the dirichlet
+distribution.
+***** A test with a higher sigma (needs a rework)
+#+begin_src R :results output :session *R* :exports both
+mu = c(-7.65489, 6.2369)
+sigma = c(6.789456, 10.5)
+lam = 0.3269
+
+N = 1000
+z=rbinom(n=N,size=1,prob=lam)
+y=rnorm(mean=mu[z+1],sigma[z+1])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+
+ft = sampling(sm,data=d, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=5)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 822ec751b527a4dace32a9753ec562df.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                mean se_mean      sd        2.5%         25%         50%
+mu[1]       -7.69376 0.00126 0.03859    -7.76680    -7.72116    -7.69505
+mu[2]        6.14872 0.00158 0.05618     6.04283     6.10967     6.14804
+sigma[1]     0.98254 0.00087 0.02703     0.93253     0.96490     0.98175
+sigma[2]     0.97708 0.00133 0.03866     0.90709     0.95122     0.97515
+theta[1]     0.69412 0.00052 0.01448     0.66699     0.68401     0.69359
+theta[2]     0.30588 0.00052 0.01448     0.27731     0.29550     0.30641
+lp__     -2027.17229 0.07147 1.50040 -2030.64311 -2028.10225 -2026.93185
+                 75%       97.5% n_eff    Rhat
+mu[1]       -7.66750    -7.61789   937 1.00242
+mu[2]        6.18501     6.26428  1268 0.99711
+sigma[1]     1.00069     1.03763   955 0.99914
+sigma[2]     1.00283     1.05052   847 1.00163
+theta[1]     0.70450     0.72269   781 1.00208
+theta[2]     0.31599     0.33301   781 1.00208
+lp__     -2026.06777 -2025.10548   441 1.00006
+
+Samples were drawn using NUTS(diag_e) at Wed Jun 26 16:45:39 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_bigger_sigma.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft)
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_bigger_sigma.png]]
+
+And as we feared the results for sigma are completely off and remain
+centered around one. The surprising part is that the traces still
+converge. We'll try again with a more priors closer to the real
+values, and more data.
+
+#+begin_src R :results output :session *R* :exports both
+mu = c(-7.65489, 6.2369)
+sigma = c(6.789456, 10.5)
+lam = 0.3269
+
+N = 5000
+z=rbinom(n=N,size=1,prob=lam)
+y=rnorm(mean=mu[z+1],sigma[z+1])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+model = "data {
+ int<lower = 0> N;
+ vector[N] y;
+}
+
+parameters {
+  ordered[2] mu;
+  real<lower=0> sigma[2];
+  real<lower=0, upper=1> theta;
+}
+
+model {
+ sigma[1] ~ normal(6, 1);
+ sigma[2] ~ normal(10, 1);
+ theta ~ beta(5, 5);
+ for (n in 1:N)
+   target += log_mix(theta,
+                     normal_lpdf(y[n] | mu[1], sigma[1]),
+                     normal_lpdf(y[n] | mu[2], sigma[2]));
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+
+ft = sampling(sm,data=d, iter=500, chains=4)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=5)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 29979891644d0f09fe42bafdb71e044c.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                 mean se_mean      sd         2.5%          25%          50%
+mu[1]        -7.67139 0.00063 0.01855     -7.70961     -7.68296     -7.67154
+mu[2]         6.23731 0.00085 0.02503      6.18703      6.22122      6.23726
+sigma[1]      1.00943 0.00044 0.01300      0.98398      1.00084      1.00908
+sigma[2]      1.02207 0.00054 0.01730      0.98928      1.01023      1.02179
+theta         0.65754 0.00022 0.00674      0.64453      0.65282      0.65773
+lp__     -10424.30231 0.08603 1.73486 -10428.91250 -10425.15915 -10423.88495
+                  75%        97.5% n_eff    Rhat
+mu[1]        -7.65979     -7.63528   879 0.99832
+mu[2]         6.25398      6.28654   866 0.99956
+sigma[1]      1.01817      1.03547   863 1.00482
+sigma[2]      1.03378      1.05576  1017 0.99854
+theta         0.66207      0.67017   917 0.99977
+lp__     -10423.02861 -10422.16360   407 1.00163
+
+Samples were drawn using NUTS(diag_e) at Wed Jun 26 16:53:10 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+These results are not any better. We need to read more on the subject
+of gaussian mixture models.
+
+***** TODO A test with lower values
