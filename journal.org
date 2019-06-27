@@ -5370,16 +5370,16 @@ parameters {
 
     vector[hosts] intercept_raw;
     vector[hosts] mu_raw;
-    vector[hosts] sigma_raw;
-    vector[hosts] noise_raw;
+    vector<lower=0>[hosts] sigma_raw;
+    vector<lower=0>[hosts] noise_raw;
 }
 transformed parameters {
     //The real parameters
 
     vector[hosts] intercept;
     vector[hosts] mu;
-    vector[hosts] sigma;
-    vector[hosts] noise;
+    vector<lower=0>[hosts] sigma;
+    vector<lower=0>[hosts] noise;
    
     //The priors for the real parameters
 
@@ -5452,13 +5452,13 @@ parameters {
     //The raw parameters
 
     matrix[hosts,5] mu_raw;
-    matrix[hosts,5] sigma_raw;
+    matrix<lower=0>[hosts,5] sigma_raw;
 }
 transformed parameters {
     //The real parameters
 
     matrix[hosts,5] mu;
-    matrix[hosts,5] sigma;
+    matrix<lower=0>[hosts,5] sigma;
 
     //The priors for the real parameters
     for(j in 1:5){
@@ -8282,6 +8282,7 @@ apt install r-base
 apt --fix-broken install
 su - -c "R -e \"install.packages('rstan')\""
 su - -c "R -e \"install.packages('dplyr')\""
+su - -c "R -e \"install.packages('GGally')\""
 wget -P ~/ -c https://github.com/Ezibenroc/mpi_calibration/raw/master/dahu/blas/dgemm_calibration.csv
 sed 's/function/func/g' -i ~/dgemm_calibration.csv
 cut -d, -f2,3,4,6,12 ~/dgemm_calibration.csv > ~/dgemm.csv
@@ -8600,3 +8601,144 @@ These results are not any better. We need to read more on the subject
 of gaussian mixture models.
 
 ***** TODO A test with lower values
+*** 2019-06-27 thursday
+**** Looked at the ggpairs plot 
+***** For the hierarchical model
+To do this, we run the code on G5K, and get back the fit values to
+make the ggpairs plot.
+
+The code is exactly the same as before, save for the histogram of the
+parameters that we didn't make last time.
+
+[[file:./images/hist_hierarchical.png]]
+
+Also to send the files (the histogram and the csv file containing the
+fit values) from the G5K node to our computer we run these two
+commands:
+
+#+begin_src sh :results output :exports both
+#from the node
+scp -r -p {{filename}} {{hostname}}@fgrenoble:~/
+#from our computer
+ssh {{hostname}}@grenoble.g5k "cat ~/{{filename}}" | ssh {{machine name}}@localhost "cat > ~/{{filename}}"
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/ggpairs_hierarchical.png :exports both :width 1200 :height 800 :session *R* 
+library(GGally)
+f=read.csv(file="~/Documents/org/fit_hierarchical.csv", header=TRUE, sep=",")
+f=f[,-1]
+ggpairs(f,upper = list(continuous = "density", combo = "box_no_facet"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/ggpairs_hierarchical.png]]
+***** For a M_H-1 N_H-1 model
+#+begin_src R :results output graphics :file ./images/ggpairs_mh1.png :exports both :width 600 :height 400 :session *R* 
+library(GGally)
+f=read.csv(file="~/Documents/org/fit_mh1.csv", header=TRUE, sep=",")
+f=f[,-1]
+ggpairs(f,upper = list(continuous = "density", combo = "box_no_facet"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/ggpairs_mh1.png]]
+**** STARTED A hierarchical M_H-2 N_H-2 model
+:LOGBOOK:
+- State "STARTED"    from "TODO"       [2019-06-27 jeu. 17:31]
+:END:
+***** The model
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] m; //N*hosts observations of the values of m, n and k
+    matrix[hosts,N] n;
+    matrix[hosts,N] k;
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    vector[5] alpha_mean;
+    vector[5] alpha_sd;
+    vector[5] beta_mean;
+    vector[5] beta_sd;
+}
+transformed data {
+    //The calculated data
+
+    matrix[hosts,N] mnk=m .* n .* k;
+    matrix[hosts,N] mn=m .* n;
+    matrix[hosts,N] mk=m .* k;
+    matrix[hosts,N] nk=n .* k;
+}
+parameters {
+    //The raw parameters
+
+    matrix[hosts,5] alpha_raw;
+    matrix<lower=0>[hosts,5] beta_raw;
+
+    //The hyper raw parameters
+
+    vector[5] hyper_alpha_raw;
+    vector<lower=0>[5] hyper_beta_raw;
+
+    //The hyper parameters sigma
+
+    vector<lower=0>[5] sigma_alpha;
+    vector<lower=0>[5] sigma_beta;
+}
+transformed parameters {
+    //The real parameters
+
+    matrix[hosts,5] alpha;
+    matrix<lower=0>[hosts,5] beta;
+
+    //The hyper parameters mu
+
+    vector[5] mu_alpha;
+    vector<lower=0>[5] mu_beta;
+
+    //The priors for the hyper parameters mu
+    for(i in 1:5){
+      mu_alpha[i] = alpha_mean[i]+ hyper_alpha_raw[i] * alpha_sd[i];
+      mu_beta[i] = beta_mean[i]+ hyper_beta_raw[i] * beta_sd[i];
+    }
+
+    //The priors for the parameters
+
+    for(j in 1:5){
+      alpha[,j] = mu_alpha[j] + alpha_raw[,j] * sigma_alpha[j];
+      beta[,j] = mu_beta[j] + beta_raw[,j] * sigma_beta[j];
+    }
+}
+model {
+    //The priors for the raw parameters
+
+    for(i in 1:hosts){
+      alpha_raw[i] ~ normal(0,1);
+      beta_raw[i] ~ normal(0,1);
+    }
+
+    //The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(0,1);
+    sigma_beta ~ normal(0,1);
+
+    //The likelihood
+
+    for(i in 1:hosts){
+      duration[i] ~ normal(alpha[i,1]*mnk[i]+alpha[i,2]*mn[i]+alpha[i,3]*mk[i]+alpha[i,4]*nk[i]+alpha[i,5], beta[i,1]*mnk[i]+beta[i,2]*mn[i]+beta[i,3]*mk[i]+beta[i,4]*nk[i]+beta[i,5]);
+    }
+}
+
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+**** TODO The priors for the hierarchical model
