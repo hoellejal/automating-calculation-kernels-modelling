@@ -8642,11 +8642,23 @@ ggpairs(f,upper = list(continuous = "density", combo = "box_no_facet"))
 
 #+RESULTS:
 [[file:./images/ggpairs_mh1.png]]
-**** STARTED A hierarchical M_H-2 N_H-2 model
+**** DONE A hierarchical M_H-2 N_H-2 model
 :LOGBOOK:
+- State "DONE"       from "STARTED" [2019-06-28 ven. 15:21]
 - State "STARTED"    from "TODO"       [2019-06-27 jeu. 17:31]
 :END:
-***** The model
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
 #+begin_src R :results output :session *R* :exports both
 modelString = "data {
     //The model's data
@@ -8741,4 +8753,108 @@ model {
 "
 sm = stan_model(model_code = modelString)
 #+end_src
-**** TODO The priors for the hierarchical model
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("m","n","k","mnk","duration")),500)
+}
+m=lapply(t_i, '[[', 1)
+n=lapply(t_i, '[[', 2)
+k=lapply(t_i, '[[', 3)
+mnk=lapply(t_i, '[[', 4)
+duration=lapply(t_i, '[[', 5)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),m=m,n=n,k=k,duration=duration,alpha_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),alpha_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05),beta_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),beta_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05))
+
+fit = sampling(sm,data=dt, iter=450, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 5513.64 seconds (Total)
+Chain 2:  Elapsed Time: 4574.82 seconds (Total)
+Chain 3:  Elapsed Time: 4679.74 seconds (Total)
+Chain 4:  Elapsed Time: 5485.89 seconds (Total)
+
+Warning messages:
+1: There were 900 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+2: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+                       mean      se_mean           sd          2.5%          25%
+mu_alpha[1]    6.411600e-11 1.850000e-13 3.520000e-13  6.345800e-11 6.385100e-11
+mu_alpha[2]    6.965000e-11 1.012900e-11 1.770100e-11  2.932000e-11 5.919100e-11
+mu_alpha[3]    1.907344e-09 2.250000e-12 1.370000e-11  1.880650e-09 1.898455e-09
+mu_alpha[4]    3.118553e-09 5.833400e-11 1.752440e-10  2.545828e-09 3.134661e-09
+mu_alpha[5]    1.368720e-06 2.530260e-08 8.099326e-07 -2.411050e-07 8.124904e-07
+mu_beta[1]     1.000000e-12 0.000000e+00 0.000000e+00  1.000000e-12 1.000000e-12
+mu_beta[2]     1.001950e-10 1.100000e-14 2.060000e-13  1.000060e-10 1.000500e-10
+mu_beta[3]     1.000990e-10 2.000000e-15 9.900000e-14  1.000030e-10 1.000290e-10
+mu_beta[4]     1.004380e-10 1.300000e-13 4.700000e-13  1.000120e-10 1.001190e-10
+mu_beta[5]     1.006938e-05 1.854303e-09 6.934572e-08  1.000134e-05 1.002081e-05
+sigma_alpha[1] 4.040000e-12 6.000000e-14 3.360000e-13  3.408000e-12 3.811000e-12
+sigma_alpha[2] 7.125600e-11 7.041000e-12 1.503300e-11  4.740200e-11 6.038600e-11
+sigma_alpha[3] 8.231000e-11 2.782000e-12 1.196200e-11  6.062700e-11 7.371300e-11
+sigma_alpha[4] 1.586600e-10 5.452900e-11 1.769330e-10  4.790100e-11 8.250700e-11
+sigma_alpha[5] 7.308113e-07 1.753507e-08 5.353387e-07  3.776832e-08 3.052773e-07
+sigma_beta[1]  2.140000e-13 1.510000e-13 2.150000e-13  0.000000e+00 0.000000e+00
+sigma_beta[2]  6.852400e-11 8.355600e-11 1.195430e-10  3.000000e-15 9.100000e-14
+sigma_beta[3]  1.160000e-13 3.000000e-15 1.110000e-13  5.000000e-15 3.600000e-14
+sigma_beta[4]  2.332300e-10 2.034980e-10 2.905460e-10  4.700000e-14 7.730000e-13
+sigma_beta[5]  8.573348e-08 2.515724e-09 8.743364e-08  2.243954e-09 2.181504e-08
+                        50%          75%        97.5% n_eff  Rhat
+mu_alpha[1]    6.417800e-11 6.438600e-11 6.472000e-11     4 2.0199149
+mu_alpha[2]    7.281900e-11 8.212100e-11 9.678200e-11     3 1.7525991
+mu_alpha[3]    1.907916e-09 1.916403e-09 1.932733e-09    37 1.0812753
+mu_alpha[4]    3.174440e-09 3.192443e-09 3.219684e-09     9 1.4711650
+mu_alpha[5]    1.383147e-06 1.908393e-06 2.949711e-06  1025 0.9994456
+mu_beta[1]     1.000000e-12 1.000000e-12 1.000000e-12  1783 0.9991126
+mu_beta[2]     1.001300e-10 1.002670e-10 1.007380e-10   367 1.0160434
+mu_beta[3]     1.000660e-10 1.001340e-10 1.003440e-10  1995 0.9986640
+mu_beta[4]     1.002790e-10 1.005880e-10 1.016800e-10    13 1.0990103
+mu_beta[5]     1.004942e-05 1.009422e-05 1.024841e-05  1399 0.9975222 
+sigma_alpha[1] 4.025000e-12 4.273000e-12 4.721000e-12    31 1.1350676
+sigma_alpha[2] 6.888000e-11 8.034300e-11 1.045760e-10     5 1.3842695
+sigma_alpha[3] 8.176600e-11 8.986400e-11 1.055840e-10    18 1.1286405
+sigma_alpha[4] 1.170640e-10 1.398440e-10 7.264420e-10    11 1.4044873
+sigma_alpha[5] 6.407486e-07 1.049351e-06 1.960407e-06   932 0.9991837
+sigma_beta[1]  1.640000e-13 4.250000e-13 4.940000e-13     2 8.5885041
+sigma_beta[2]  2.960000e-13 4.911300e-11 3.236070e-10     2 7.2915379
+sigma_beta[3]  8.100000e-14 1.600000e-13 4.180000e-13  1325 0.9990233
+sigma_beta[4]  8.168100e-11 3.704010e-10 8.066480e-10     2 7.8672756
+sigma_beta[5]  5.674694e-08 1.212432e-07 3.331560e-07  1208 0.9995323
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_hierarchical_mh2.png :exports both :width 2000 :height 1500 :session *R* 
+stan_trace(fit,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_hierarchical_mh2.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_hierarchical_mh2.png :exports both :width 2000 :height 1500 :session *R* 
+stan_hist(fit,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_hierarchical_mh2.png]]
+
+#+begin_src R :results output graphics :file ./images/ggpairs_hierarchical_mh2.png :exports both :width 2000 :height 1500 :session *R* 
+library(GGally)
+f=read.csv(file="~/Documents/org/fit_hierarchical_mh2.csv", header=TRUE, sep=",")
+f=f[,-1]
+ggpairs(f,upper = list(continuous = "density", combo = "box_no_facet"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/ggpairs_hierarchical_mh2.png]]
