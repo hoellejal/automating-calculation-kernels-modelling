@@ -7669,8 +7669,8 @@ modelString = "data {
     real alpha_sd;
     real beta_mean;
     real beta_sd;
-    real teta_mean;
-    real teta_sd;
+    real theta_mean;
+    real theta_sd;
     real gamma_mean;
     real gamma_sd;
 }
@@ -7679,21 +7679,21 @@ parameters {
 
     vector[hosts] alpha_raw;
     vector[hosts] beta_raw;
-    vector<lower=0>[hosts] teta_raw;
+    vector<lower=0>[hosts] theta_raw;
     vector<lower=0>[hosts] gamma_raw;
 
     //The hyper raw parameters
 
     real hyper_alpha_raw;
     real hyper_beta_raw;
-    real<lower=0> hyper_teta_raw;
+    real<lower=0> hyper_theta_raw;
     real<lower=0> hyper_gamma_raw;
 
     //The hyper parameters sigma
 
     real<lower=0> sigma_alpha;
     real<lower=0> sigma_beta;
-    real<lower=0> sigma_teta;
+    real<lower=0> sigma_theta;
     real<lower=0> sigma_gamma;
 }
 transformed parameters {
@@ -7701,28 +7701,28 @@ transformed parameters {
 
     vector[hosts] alpha;
     vector[hosts] beta;
-    vector<lower=0>[hosts] teta;
+    vector<lower=0>[hosts] theta;
     vector<lower=0>[hosts] gamma;
 
     //The hyper parameters mu
 
     real mu_alpha;
     real mu_beta;
-    real<lower=0> mu_teta;
+    real<lower=0> mu_theta;
     real<lower=0> mu_gamma;
 
     //The priors for the hyper parameters mu
 
     mu_alpha = alpha_mean+ hyper_alpha_raw * alpha_sd;
     mu_beta = beta_mean+ hyper_beta_raw * beta_sd;
-    mu_teta = teta_mean+ hyper_teta_raw * teta_sd;
+    mu_theta = theta_mean+ hyper_theta_raw * theta_sd;
     mu_gamma= gamma_mean+ hyper_gamma_raw * gamma_sd;
 
     //The priors for the parameters
 
     alpha = mu_alpha + alpha_raw * sigma_alpha;
     beta = mu_beta + beta_raw * sigma_beta;
-    teta = mu_teta + teta_raw * sigma_teta;
+    theta = mu_theta + theta_raw * sigma_theta;
     gamma = mu_gamma + gamma_raw * sigma_gamma;
 }
 model {
@@ -7730,27 +7730,27 @@ model {
 
     alpha_raw ~ normal(0,1);
     beta_raw ~ normal(0,1);
-    teta_raw ~ normal(0,1);
+    theta_raw ~ normal(0,1);
     gamma_raw ~ normal(0,1);
 
     //The priors for the hyper raw parameters
 
     hyper_alpha_raw ~ normal(0,1);
     hyper_beta_raw ~ normal(0,1);
-    hyper_teta_raw ~ normal(0,1);
+    hyper_theta_raw ~ normal(0,1);
     hyper_gamma_raw ~ normal(0,1);
 
     //The priors for the hyper parameters sigma
 
     sigma_alpha ~ normal(0,1);
     sigma_beta ~ normal(0,1);
-    sigma_teta ~ normal(0,1);
+    sigma_theta ~ normal(0,1);
     sigma_gamma ~ normal(0,1);
 
     //The likelihood
 
     for(i in 1:hosts){
-      duration[i] ~ normal(alpha[i]*mnk[i]+beta[i], teta[i]*mnk[i]+gamma[i]);
+      duration[i] ~ normal(alpha[i]*mnk[i]+beta[i], theta[i]*mnk[i]+gamma[i]);
     }
 }
 "
@@ -7767,7 +7767,7 @@ sigma_alpha ~ normal(0,1)
 
 alpha[i] ~ normal(mu_alpha, sigma_alpha)
 
-duration[i] ~ normal(alpha[i]*mnk + beta[i], teta[i]*mnk + gamma[i])
+duration[i] ~ normal(alpha[i]*mnk + beta[i], theta[i]*mnk + gamma[i])
 
 #+begin_src R :results output :session *R* :exports both
 t_i=list()
@@ -8098,6 +8098,88 @@ This time we'll try with a sample of 5000 to see if there really is a
 difference. However considering we found out the amount of generated
 data doesn't matter, we'll reduce the number of chains to make the fit
 faster to compute.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+    int<lower=0> N; //number of observations
+    int hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real it_mean;
+    real it_sd;
+    real mu_mean;
+    real mu_sd;
+    real sigma_mean;
+    real sigma_sd;
+    real n_mean;
+    real n_sd;
+}
+parameters {
+    //The raw parameters
+
+    vector[hosts] intercept_raw;
+    vector[hosts] mu_raw;
+    vector<lower=0>[hosts] sigma_raw;
+    vector<lower=0>[hosts] noise_raw;
+}
+transformed parameters {
+    //The real parameters
+
+    vector[hosts] intercept;
+    vector[hosts] mu;
+    vector<lower=0>[hosts] sigma;
+    vector<lower=0>[hosts] noise;
+   
+    //The priors for the real parameters
+
+    intercept=it_mean + intercept_raw * it_sd;
+    mu=mu_mean + mu_raw * mu_sd;
+    sigma=sigma_mean + sigma_raw * sigma_sd;
+    noise= n_mean + noise_raw * n_sd;
+}
+model {
+    //The priors for the raw parameters
+
+    intercept_raw ~ normal(0,1);
+    mu_raw ~ normal(0,1);
+    sigma_raw ~ normal(0,1);
+    noise_raw ~ normal(0,1);
+    
+    //The likelihood
+    for(i in 1:hosts){
+      duration[i] ~ normal(mu[i]*mnk[i]+intercept[i], sigma[i]*mnk[i]+noise[i]);
+    }
+}
+
+generated quantities {
+    //The generated data
+
+    vector[hosts] mnk_pos;
+    vector[hosts] y_sim;
+    for(i in 1:hosts){
+      mnk_pos[i] = mnk[i][categorical_rng(rep_vector(1,N) / N)];
+      y_sim[i] = normal_rng(mu[i]*mnk_pos[i]+intercept[i], sigma[i]*mnk_pos[i]+noise[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
 
 #+begin_src R :results output :session *R* :exports both
 t_i=list()
@@ -8748,7 +8830,6 @@ model {
       duration[i] ~ normal(alpha[i,1]*mnk[i]+alpha[i,2]*mn[i]+alpha[i,3]*mk[i]+alpha[i,4]*nk[i]+alpha[i,5], beta[i,1]*mnk[i]+beta[i,2]*mn[i]+beta[i,3]*mk[i]+beta[i,4]*nk[i]+beta[i,5]);
     }
 }
-
 "
 sm = stan_model(model_code = modelString)
 #+end_src
@@ -8992,8 +9073,8 @@ mu = c(-1e-10, 1e-07)
 sigma = c(1e-12, 1e-08)
 lam = 0.32
 N = 1000
-z=rbinom(n=N,size=1,prob=lam)
-y =rnorm(n=N, mean=mu[z+1],sd=sigma[z+1])
+z=rbinom(n=N,size=1,prob=lam)+1
+y =rnorm(n=N, mean=mu[z],sd=sigma[z])
 hist(y,100)
 #+end_src
 
@@ -9079,3 +9160,239 @@ from.
 
 ***** TODO With an informative prior
 Needs to talk about priors with Arnaud
+**** A redo of the hierarchical model with less constraints
+Basically we remove the positive constraints for mu-theta and mu-gamma
+to see what it would change.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, data$mnk < 2e10),everything())
+
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real alpha_mean;
+    real alpha_sd;
+    real beta_mean;
+    real beta_sd;
+    real theta_mean;
+    real theta_sd;
+    real gamma_mean;
+    real gamma_sd;
+}
+parameters {
+    //The raw parameters
+
+    vector[hosts] alpha_raw;
+    vector[hosts] beta_raw;
+    vector<lower=0>[hosts] theta_raw;
+    vector<lower=0>[hosts] gamma_raw;
+
+    //The hyper raw parameters
+
+    real hyper_alpha_raw;
+    real hyper_beta_raw;
+    real<lower=0> hyper_theta_raw;
+    real<lower=0> hyper_gamma_raw;
+
+    //The hyper parameters sigma
+
+    real<lower=0> sigma_alpha;
+    real<lower=0> sigma_beta;
+    real<lower=0> sigma_theta;
+    real<lower=0> sigma_gamma;
+}
+transformed parameters {
+    //The real parameters
+
+    vector[hosts] alpha;
+    vector[hosts] beta;
+    vector<lower=0>[hosts] theta;
+    vector<lower=0>[hosts] gamma;
+
+    //The hyper parameters mu
+
+    real mu_alpha;
+    real mu_beta;
+    real mu_theta;
+    real mu_gamma;
+
+    //The priors for the hyper parameters mu
+
+    mu_alpha = alpha_mean+ hyper_alpha_raw * alpha_sd;
+    mu_beta = beta_mean+ hyper_beta_raw * beta_sd;
+    mu_theta = theta_mean+ hyper_theta_raw * theta_sd;
+    mu_gamma= gamma_mean+ hyper_gamma_raw * gamma_sd;
+
+    //The priors for the parameters
+
+    alpha = mu_alpha + alpha_raw * sigma_alpha;
+    beta = mu_beta + beta_raw * sigma_beta;
+    theta = mu_theta + theta_raw * sigma_theta;
+    gamma = mu_gamma + gamma_raw * sigma_gamma;
+}
+model {
+    //The priors for the raw parameters
+
+    alpha_raw ~ normal(0,1);
+    beta_raw ~ normal(0,1);
+    theta_raw ~ normal(0,1);
+    gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+    hyper_theta_raw ~ normal(0,1);
+    hyper_gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(0,1);
+    sigma_beta ~ normal(0,1);
+    sigma_theta ~ normal(0,1);
+    sigma_gamma ~ normal(0,1);
+
+    //The likelihood
+
+    for(i in 1:hosts){
+      duration[i] ~ normal(alpha[i]*mnk[i]+beta[i], theta[i]*mnk[i]+gamma[i]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=1e-06,alpha_mean=1e-10,alpha_sd=1e-11,theta_mean=1e-10,theta_sd=1e-11,gamma_mean=1e-05,gamma_sd=1e-06)
+
+fit = sampling(sm,data=dt, iter=400, chains=1)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 99.2011 seconds (Total)
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/ggpairs_hierarchical_reworked.png :exports both :width 1200 :height 800 :session *R* 
+library(GGally)
+extracted=rstan::extract(fit)
+d=data.frame(mu_alpha=extracted$mu_alpha,mu_beta=extracted$mu_beta,mu_theta=extracted$mu_theta,mu_gamma=extracted$mu_gamma,sigma_alpha=extracted$sigma_alpha,sigma_beta=extracted$sigma_beta,sigma_theta=extracted$sigma_theta,sigma_gamma=extracted$sigma_gamma)
+ggpairs(d,upper = list(continuous = "density", combo = "box_no_facet"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/ggpairs_hierarchical_reworked.png]]
+
+There is surprisingly little difference, and the mu-theta and mu-gamma
+parameters still appear truncated even without the positive constraint.
+
+**** A redo of posterior plotting with a huge sample
+Following Arnaud's comment on how it was strange that per host
+ellipses changed places according on if we used init values for the
+fit or not; especially since we used the same sample, so the same
+input data; we decided to run it again (on G5K) to make sure. This
+time we take great care not to change the sample.
+
+#+begin_src R :results output :session *R* :exports both
+ft = sampling(sm,data=d, iter=400, chains=1)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 2920.77 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+initfunction=function(){
+  list(intercept=array(rep(1e-07,64)),mu=array(rep(1e-10,64)),sigma=array(rep(1$
+}
+fit = sampling(sm,data=d, iter=400, chains=1,init=initfunction)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 2740.19 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+library(dplyr)
+library(ggplot2)
+d=read.csv("~/Documents/org/fit_mh1_big_sample.csv")
+a=list(intercept=d %>% select(starts_with("intercept")), mu=d %>% select(starts_with("mu")), sigma=d %>% select(starts_with("sigma")))
+v=rep(1:64,each=200)
+dtf=data.frame(intercept=unlist(a$intercept), mu=unlist(a$mu), sigma=unlist(a$sigma),cpu=v)
+dtt=data.frame(intercept=colMeans(a$intercept),mu=colMeans(a$mu),sigma=colMeans(a$sigma))
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_5000_sample_redo.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(intercept,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(intercept,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_5000_sample_redo.png]]
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_5000_sample_redo.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(sigma,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(sigma,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_5000_sample_redo.png]]
+
+So that's the graphs without init values.
+
+#+begin_src R :results output :session *R* :exports both
+library(dplyr)
+library(ggplot2)
+d=read.csv("~/Documents/org/fit_mh1_big_sample_init_values.csv")
+a=list(intercept=d %>% select(starts_with("intercept")), mu=d %>% select(starts_with("mu")), sigma=d %>% select(starts_with("sigma")))
+v=rep(1:64,each=200)
+dtf=data.frame(intercept=unlist(a$intercept), mu=unlist(a$mu), sigma=unlist(a$sigma),cpu=v)
+dtt=data.frame(intercept=colMeans(a$intercept),mu=colMeans(a$mu),sigma=colMeans(a$sigma))
+#+end_src
+
+#+begin_src R :results output graphics :file ./images/mu_on_intercept_5000_sample_init_values_redo.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(intercept,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(intercept,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_intercept_5000_sample_init_values_redo.png]]
+
+#+begin_src R :results output graphics :file ./images/mu_on_sigma_5000_sample_init_values_redo.png :exports both :width 600 :height 400 :session *R* 
+ggplot(data=dtf)+stat_ellipse(mapping=aes(sigma,mu,color=factor(cpu)),alpha=0.5)+stat_ellipse(data=dtt,mapping=aes(sigma,mu))
+#+end_src
+
+#+RESULTS:
+[[file:./images/mu_on_sigma_5000_sample_init_values_redo.png]]
+
+The only thing we can conclude is that adding init values doesn't seem
+to help much making the result more precise (which was what we
+thought). It does seem to make the largest per-host ellipses of the
+intercept a bit smaller (reducing the scale of the graph), but that's
+the extend of it.
+ 
