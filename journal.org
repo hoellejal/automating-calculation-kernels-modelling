@@ -9396,3 +9396,197 @@ thought). It does seem to make the largest per-host ellipses of the
 intercept a bit smaller (reducing the scale of the graph), but that's
 the extend of it.
  
+*** 2019-07-02 tuesday
+**** Tried to use the QR decomposition with a simple polynomial model
+We'll use the same example as on tuesday, the 14th of May to compare the
+results.
+
+#+begin_src R :results output :session *R* :exports both
+library(ggplot2)
+library(rstan)
+
+generate_dataset=function(intercept, second_degree, first_degree, N, min_x=0, max_x=100, sigma){
+    x = sample(min_x:max_x,N,replace=T) 
+    y = second_degree * x^2 + first_degree * x + intercept + rnorm(N, sd=sigma)
+    df = data.frame(x=x,y=y)
+    return(df)
+}
+df=generate_dataset(100,2,6, 500, sigma=150)
+#+end_src
+
+We first try with the usual model, and then with QR decomposition to
+see the difference in sampling time.
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] y;
+}
+parameters {
+    real intercept;
+    real first_degree;
+    real second_degree;
+    real<lower=0> sigma;
+}
+model {
+    intercept ~ normal(0, 10);
+    first_degree ~ normal(0,10);
+    second_degree ~ normal(0,10);
+    sigma ~ normal(0,10);
+    y ~ normal(second_degree*square(x)+first_degree*x+intercept, sigma);
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=nrow(df),x=df$x,y=df$y)
+fit = sampling(sm,data=data, iter=2000, chains=8)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 4.81346 seconds (Total)
+Chain 2:  Elapsed Time: 4.52336 seconds (Total)
+Chain 3:  Elapsed Time: 4.11373 seconds (Total)
+Chain 4:  Elapsed Time: 4.32144 seconds (Total)
+Chain 5:  Elapsed Time: 4.91251 seconds (Total)
+Chain 6:  Elapsed Time: 5.10973 seconds (Total)
+Chain 7:  Elapsed Time: 4.80717 seconds (Total)
+Chain 8:  Elapsed Time: 4.93607 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 653d7ac4bc92b3bd96c57f03c084510c.
+8 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=8000.
+
+                  mean se_mean   sd     2.5%      25%      50%      75%
+intercept        23.45    0.14 8.87     5.80    17.53    23.36    29.46
+first_degree      8.38    0.01 0.53     7.33     8.01     8.37     8.75
+second_degree     1.98    0.00 0.01     1.97     1.98     1.98     1.99
+sigma           132.51    0.05 3.23   126.21   130.30   132.49   134.67
+lp__          -2867.16    0.03 1.42 -2870.67 -2867.84 -2866.84 -2866.14
+                 97.5% n_eff Rhat
+intercept        40.78  3957    1
+first_degree      9.41  3035    1
+second_degree     1.99  3236    1
+sigma           138.95  4427    1
+lp__          -2865.42  2894    1
+
+Samples were drawn using NUTS(diag_e) at Tue Jul  2 11:15:07 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Our results are not very accurate because we used uninformative
+priors. And now with QR decomposition:
+
+#+begin_src R :results output :session *R* :exports both
+X = t(data.matrix(data.frame(df$x, df$x * df$x)))
+M=2
+beta = matrix(c(6, 2), nrow=M, ncol=1)
+mu = t(X) %*% beta + 100
+y = sapply(1:500, function(n) rnorm(1, mu[n], 150))
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+  int<lower=1> N;
+  int<lower=1> M;
+  matrix[M, N] X;
+  vector[N] y;
+}
+
+transformed data {
+  // Compute, thin, and then scale QR decomposition
+  matrix[N, M] Q = qr_Q(X')[, 1:M] * N;
+  matrix[M, M] R = qr_R(X')[1:M, ] / N;
+  matrix[M, M] R_inv = inverse(R);
+}
+
+parameters {
+  vector[M] coefficient_tilde;
+  real intercept;
+  real<lower=0> sigma;
+}
+
+transformed parameters {
+  vector[M] coefficient = R_inv * coefficient_tilde;
+}
+
+model {
+  coefficient ~ normal(0, 10);
+  intercept ~ normal(0, 10);
+  sigma ~ normal(0, 10);
+
+  y ~ normal(Q * coefficient_tilde + intercept, sigma);
+}"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+data = list(N=500,M=2,X=X,y=y)
+fit = sampling(sm,data=data, iter=2000, chains=8)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 1.07903 seconds (Total)
+Chain 2:  Elapsed Time: 1.52741 seconds (Total)
+Chain 3:  Elapsed Time: 0.978692 seconds (Total)
+Chain 4:  Elapsed Time: 0.834766 seconds (Total)
+Chain 5:  Elapsed Time: 0.949423 seconds (Total)
+Chain 6:  Elapsed Time: 0.801064 seconds (Total)
+Chain 7:  Elapsed Time: 1.34502 seconds (Total)
+Chain 8:  Elapsed Time: 0.974693 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit, pars=c("intercept","sigma","coefficient"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 5192e8f855e8f471ff5895c84ce71a10.
+8 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=8000.
+
+                 mean se_mean   sd   2.5%    25%    50%    75%  97.5% n_eff
+intercept       32.79    0.14 8.72  15.88  26.97  32.80  38.57  49.99  3688
+sigma          126.77    0.04 3.20 120.73 124.54 126.71 128.97 133.05  5739
+coefficient[1]   8.86    0.01 0.52   7.87   8.51   8.85   9.21   9.89  3935
+coefficient[2]   1.98    0.00 0.01   1.97   1.97   1.98   1.98   1.99  4735
+               Rhat
+intercept         1
+sigma             1
+coefficient[1]    1
+coefficient[2]    1
+
+Samples were drawn using NUTS(diag_e) at Tue Jul  2 11:31:12 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_QR_decomposition.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit,pars=c("intercept","coefficient","sigma"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_QR_decomposition.png]]
+
+The fit was definitely faster and the results are equivalent to the
+previous ones. This decomposition definitely makes the fit faster, but
+can only be used for polynomial models. Also it may not work with
+non-centered parameterisation. But if it does, it could make our M_H-2
+N_H-2 model much faster (especially the hierarchical one which is
+really slow).
+
