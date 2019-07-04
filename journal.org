@@ -9065,101 +9065,6 @@ There are some visible differences between the two but the shape stays
 roughly the same, and the frequency of the values (for 1000
 observations) is the same as well.
 
-**** Gaussian mixture with low values
-***** With a non informative prior
-#+begin_src R :results output :session *R* :exports both
-library(rstan)
-mu = c(-1e-10, 1e-07)
-sigma = c(1e-12, 1e-08)
-lam = 0.32
-N = 1000
-z=rbinom(n=N,size=1,prob=lam)+1
-y =rnorm(n=N, mean=mu[z],sd=sigma[z])
-hist(y,100)
-#+end_src
-
-#+begin_src R :results output :session *R* :exports both
-model ="
-data {
-    int<lower=0> N;
-    vector[N] y;
-}
-
-parameters {
-    ordered[2] mu;
-    real<lower=0> sigma[2];
-    simplex[2] theta;
-}
-model {
-    sigma ~ normal(0, 1);
-    mu ~ normal(0, 1);
-    theta ~ dirichlet(rep_vector(2.0, 2));
-
-    // likelihood
-    for(i in 1:N) {
-        vector[2] contributions;
-        for(k in 1:2) {
-            contributions[k] = log(theta[k]) + normal_lpdf(y[i] | mu[k], sigma[k]);
-        }
-        target += log_sum_exp(contributions);
-    }
-}
-"
-sm = stan_model(model_code = model)
-#+end_src
-
-#+begin_src R :results output :session *R* :exports both
-d = list(N,y)
-
-ft = sampling(sm,data=d, iter=500, chains=4,control=list(adapt_delta=0.9))
-#+end_src
-
-#+begin_src R :results output :session *R* :exports both
-print(ft,digits=5)
-#+end_src
-
-#+RESULTS:
-#+begin_example
-Inference for Stan model: ae128cadc6b85737324c08cac3a11580.
-4 chains, each with iter=500; warmup=250; thin=1; 
-post-warmup draws per chain=250, total post-warmup draws=1000.
-
-                mean   se_mean         sd       2.5%        25%         50%
-mu[1]       -0.26265   0.14752    0.20883   -0.58329   -0.33594    -0.23365
-mu[2]        0.15896   0.19458    0.27546    0.00000    0.00000     0.00000
-sigma[1]     0.46451   0.21314    0.30173    0.00000    0.31719     0.52241
-sigma[2]     0.29211   0.35755    0.50616    0.00001    0.00002     0.00004
-theta[1]     0.36709   0.21075    0.29834    0.14558    0.19174     0.22116
-theta[2]     0.63291   0.21075    0.29834    0.11948    0.60351     0.77884
-lp__     10281.89959 906.54380 1283.64338 8639.98654 9295.76969 10061.73530
-                 75%       97.5% n_eff        Rhat
-mu[1]       -0.16035     0.00000     2 30253.23447
-mu[2]        0.15895     0.63583     2 81188.86689
-sigma[1]     0.66970     0.81317     2 18866.54260
-sigma[2]     0.29213     1.16838     2 59445.89915
-theta[1]     0.39649     0.88052     2 13635.28693
-theta[2]     0.80826     0.85442     2 13635.28693
-lp__     10976.76597 12152.37103     2    49.84487
-
-Samples were drawn using NUTS(diag_e) at Mon Jul  1 10:20:31 2019.
-For each parameter, n_eff is a crude measure of effective sample size,
-and Rhat is the potential scale reduction factor on split chains (at 
-convergence, Rhat=1).
-#+end_example
-
-#+begin_src R :results output graphics :file ./images/trace_mixture_low_values.png :exports both :width 600 :height 400 :session *R* 
-stan_trace(ft)
-#+end_src
-
-#+RESULTS:
-[[file:./images/trace_mixture_low_values.png]]
-
-Without an informative prior, the traces don't converge and the values
-found for the result are really far from the values we generated data
-from.
-
-***** TODO With an informative prior
-Needs to talk about priors with Arnaud
 **** A redo of the hierarchical model with less constraints
 Basically we remove the positive constraints for mu-theta and mu-gamma
 to see what it would change.
@@ -9395,6 +9300,10 @@ to help much making the result more precise (which was what we
 thought). It does seem to make the largest per-host ellipses of the
 intercept a bit smaller (reducing the scale of the graph), but that's
 the extend of it.
+
+However we notice there is a certain variability between two fit of
+the same model with the same value, one that we may have wrongly
+overlooked.
  
 *** 2019-07-02 tuesday
 **** Tried to use the QR decomposition with a simple polynomial model
@@ -9527,7 +9436,9 @@ model {
   intercept ~ normal(0, 10);
   sigma ~ normal(0, 10);
 
-  y ~ normal(Q * coefficient_tilde + intercept, sigma);
+for(i in 1:N){
+  y[i] ~ normal(Q[i] * coefficient_tilde[i] + intercept, sigma);
+}
 }"
 sm = stan_model(model_code = modelString)
 #+end_src
@@ -9590,3 +9501,609 @@ non-centered parameterisation. But if it does, it could make our M_H-2
 N_H-2 model much faster (especially the hierarchical one which is
 really slow).
 
+However it'd be very complicated to apply on our models, since for it
+to work, the QR decomposition needs a matrix as an input for x and a
+vector for y. However our models per host all use a matrix for y (the
+duration), considering this one depends on the host. So it may be that
+we won't be able to use the QR decomposition in our models.
+
+**** Gaussian mixture with low values
+***** With a non informative prior
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+mu = c(-5.23e-10, 6.92e-07)
+sigma = c(2.87e-12, 7.45e-08)
+lam = 0.32
+N = 1000
+z=rbinom(n=N,size=1,prob=lam)+1
+y =rnorm(n=N, mean=mu[z],sd=sigma[z])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+}
+
+parameters {
+    ordered[2] mu;
+    real<lower=0> sigma[2];
+    simplex[2] theta;
+}
+model {
+    sigma ~ unif(0, 15);
+    mu ~ normal(0, 1);
+    theta ~ dirichlet(rep_vector(2.0, 2));
+
+    // likelihood
+    for(i in 1:N){
+        vector[2] contributions;
+        for(k in 1:2) {
+            contributions[k] = log(theta[k]) + normal_lpdf(y[i] | mu[k], sigma[k]);
+        }
+        target += log_sum_exp(contributions);
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[N];
+  vector[N] y_sim;
+  
+  for (n in 1:N) {
+    comp[n] = categorical_rng(theta);
+    y_sim[n] = normal_rng(mu[comp[n]], sigma[comp[n]]);
+  }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+SYNTAX ERROR, MESSAGE(S) FROM PARSER:
+
+Probability function must end in _lpdf or _lpmf. Found distribution family = unif with no corresponding probability function unif_lpdf, unif_lpmf, or unif_log
+  error in 'model1e1d7471eb80_ffb98ec31d58a8bbe460fe667f0baacb' at line 13, column 24
+  -------------------------------------------------
+    11: }
+    12: model {
+    13:     sigma ~ unif(0, 15);
+                               ^
+    14:     mu ~ normal(0, 1);
+  -------------------------------------------------
+
+Error in stanc(file = file, model_code = model_code, model_name = model_name,  : 
+  failed to parse Stan model 'ffb98ec31d58a8bbe460fe667f0baacb' due to the above error.
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+
+ft = sampling(sm,data=d, iter=500, chains=4,control=list(adapt_delta=0.99))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 28.584 seconds (Total)
+Chain 2:  Elapsed Time: 39.8372 seconds (Total)
+Chain 3:  Elapsed Time: 49.9488 seconds (Total)
+Chain 4:  Elapsed Time: 9.54928 seconds (Total)
+
+Warning messages:
+1: There were 784 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 13 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: There were 4 chains where the estimated Bayesian Fraction of Missing Information was low. See
+http://mc-stan.org/misc/warnings.html#bfmi-low 
+4: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=15, pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 7c95547c7f894953a9b23ac496ed2187.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                mean   se_mean         sd          2.5%           25%
+mu[1]    -0.03993005 0.0488799 0.06919584 -1.597275e-01 -3.992681e-02
+mu[2]     0.80674010 0.7322297 1.03656625  1.145285e-07  8.551846e-02
+sigma[1]  0.08477258 0.1037652 0.14689306  2.374847e-06  2.478903e-06
+sigma[2]  1.48058941 0.8729541 1.23577992  2.181053e-06  3.884605e-01
+theta[1]  0.71947319 0.2207121 0.31244668  1.793671e-01  6.983906e-01
+theta[2]  0.28052681 0.2207121 0.31244668  8.426908e-02  8.752720e-02
+                  50%          75%        97.5% n_eff     Rhat
+mu[1]    1.670708e-07 2.712918e-07 7.963343e-07     2 27283.10
+mu[2]    3.303841e-01 1.051586e+00 2.566136e+00     2 29636.33
+sigma[1] 9.426763e-06 8.477149e-02 3.390877e-01     2 16538.90
+sigma[2] 1.607727e+00 2.699936e+00 2.706381e+00     2 20701.22
+theta[1] 8.913824e-01 9.124728e-01 9.157309e-01     2 24514.34
+theta[2] 1.086176e-01 3.016094e-01 8.206329e-01     2 24514.34
+
+Samples were drawn using NUTS(diag_e) at Tue Jul  2 15:20:18 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mixture_low_values.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mixture_low_values.png]]
+
+Without an informative prior, the traces don't converge and the values
+found for the result are really far from the values we generated data
+from.
+
+***** With non centered parameterisation and a hyper precise prior
+
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+}
+
+parameters {
+    ordered[2] mu_raw;
+    vector<lower=0>[2] sigma_raw;
+    simplex[2] theta;
+}
+transformed parameters{
+    ordered[2] mu;
+    vector<lower=0>[2] sigma;
+
+    mu[1]=-1e-10+mu_raw[1]*2e-10;
+    mu[2]=1e-07+mu_raw[2]*2e-07;
+    sigma[1]=2.8e-12+sigma_raw[1]*2e-13;
+    sigma[2]=7.4e-08+sigma_raw[2]*2e-09;
+}
+model {
+    sigma_raw ~ normal(0, 1);
+    mu_raw ~ normal(0, 1);
+    theta ~ dirichlet(rep_vector(2.0, 2));
+
+    // likelihood
+    for(i in 1:N){
+        vector[2] contributions;
+        for(k in 1:2) {
+            contributions[k] = log(theta[k]) + normal_lpdf(y[i] | mu[k], sigma[k]);
+        }
+        target += log_sum_exp(contributions);
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[N];
+  vector[N] y_sim;
+  
+  for (n in 1:N) {
+    comp[n] = categorical_rng(theta);
+    y_sim[n] = normal_rng(mu[comp[n]], sigma[comp[n]]);
+  }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+This time we give hyper precise priors to see what the outcome will
+be. It goes without saying that these priors won't be used in the
+future because it's unreasonable to believe we'd have so much
+knowledge on the system.
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+
+ft = sampling(sm,data=d, iter=500, chains=4,control=list(adapt_delta=0.99))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 32.3825 seconds (Total)
+Chain 2:  Elapsed Time: 40.9132 seconds (Total)
+Chain 3:  Elapsed Time: 42.1361 seconds (Total)
+Chain 4:  Elapsed Time: 46.0363 seconds (Total)
+
+Warning messages:
+1: There were 42 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=15,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 680d63e002323fbef211d42124b2c285.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                  mean     se_mean           sd          2.5%           25%
+mu[1]    -1.905050e-10 8.91900e-12 1.291180e-10 -4.604350e-10 -2.842090e-10
+mu[2]     2.146358e-07 1.62521e-10 5.129333e-09  2.053099e-07  2.111780e-07
+sigma[1]  2.966000e-12 5.00000e-15 1.240000e-13  2.807000e-12  2.871000e-12
+sigma[2]  1.569515e-07 4.46300e-11 1.168719e-09  1.545723e-07  1.561859e-07
+theta[1]  1.971022e-03 5.12608e-05 1.402693e-03  2.757291e-04  9.252958e-04
+theta[2]  9.980290e-01 5.12608e-05 1.402693e-03  9.943461e-01  9.972619e-01
+                   50%           75%        97.5% n_eff      Rhat
+mu[1]    -1.785600e-10 -7.823100e-11 8.140000e-13   210 1.0252077
+mu[2]     2.145838e-07  2.178720e-07 2.253486e-07   996 1.0027087
+sigma[1]  2.940000e-12  3.036000e-12 3.256000e-12   650 1.0059876
+sigma[2]  1.569287e-07  1.577630e-07 1.590999e-07   686 0.9986386
+theta[1]  1.632126e-03  2.738080e-03 5.653948e-03   749 0.9974455
+theta[2]  9.983679e-01  9.990747e-01 9.997243e-01   749 0.9974455
+
+Samples were drawn using NUTS(diag_e) at Tue Jul  2 16:49:57 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+However despite the extremely precise prior, the value found for
+sigma[2] is really far from the real value, and the values for theta
+are completely off. We need to rewrite the model.
+
+#+begin_src R :results output graphics :file ./images/hist_original_mixture_hyperprecise_prior.png :exports both :width 600 :height 400 :session *R* 
+hist(y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_original_mixture_hyperprecise_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_generated_mixture_hyperprecise_prior.png :exports both :width 600 :height 400 :session *R* 
+library(dplyr)
+extracted=rstan::extract(ft)
+df_generated = data.frame(y=matrix(unlist(extracted$y_sim),nrow=length(extracted$y_sim),byrow=T))
+df_generated = sample_n(df_generated,1000)
+hist(df_generated$y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_generated_mixture_hyperprecise_prior.png]]
+
+This time the two histograms are really different, a consequence of
+the difference between the parameters found and their real value.
+*** 2019-07-03 wednesday
+**** Non centered parameterisation for Gaussian mixture
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+mu = c(-5.23e-10, 6.92e-07)
+sigma = c(2.87e-12, 7.45e-08)
+lam = 0.32
+N = 1000
+z=rbinom(n=N,size=1,prob=lam)+1
+y =rnorm(n=N, mean=mu[z],sd=sigma[z])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+}
+
+parameters {
+    ordered[2] mu_raw;
+    vector<lower=0>[2] sigma_raw;
+    real<lower=0, upper=1> theta_raw;
+}
+transformed parameters{
+    ordered[2] mu;
+    vector<lower=0>[2] sigma;
+    real<lower=0, upper=1> theta;
+
+    mu[1]=-5.2e-10+mu_raw[1]*2e-11;
+    mu[2]=6.9e-07+mu_raw[2]*2e-08;
+    sigma[1]=2.8e-12+sigma_raw[1]*2e-13;
+    sigma[2]=7.4e-08+sigma_raw[2]*2e-09;
+    theta=0.32+theta_raw*2e-02;
+}
+model {
+    sigma_raw ~ normal(0, 1);
+    mu_raw ~ normal(0, 1);
+    theta_raw ~ beta(5,5);
+
+    // likelihood
+    for (n in 1:N){
+     target += log_mix(theta,
+                       normal_lpdf(y[n] | mu[1], sigma[1]),
+                       normal_lpdf(y[n] | mu[2], sigma[2]));
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[N];
+  vector[N] y_sim;
+  
+  for (n in 1:N) {
+    comp[n] = binomial_rng(1,theta)+1;
+    y_sim[n] = normal_rng(mu[comp[n]], sigma[comp[n]]);
+  }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y)
+
+ft = sampling(sm,data=d, iter=500, chains=4,control=list(adapt_delta=0.99))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 16.5436 seconds (Total)
+Chain 2:  Elapsed Time: 20.4712 seconds (Total)
+Chain 3:  Elapsed Time: 22.5702 seconds (Total)
+Chain 4:  Elapsed Time: 14.7451 seconds (Total)
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=15,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: cef199d406a6ba866377b3cb24f7250b.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                  mean      se_mean           sd          2.5%           25%
+mu[1]    -5.231350e-10 3.000000e-15 1.140000e-13 -5.233520e-10 -5.232110e-10
+mu[2]     6.955245e-07 1.730810e-10 3.842577e-09  6.887798e-07  6.928791e-07
+sigma[1]  2.992000e-12 3.000000e-15 7.000000e-14  2.861000e-12  2.941000e-12
+sigma[2]  7.516474e-08 4.109300e-11 9.204590e-10  7.403241e-08  7.444574e-08
+theta     3.372244e-01 4.468101e-05 1.150451e-03  3.344635e-01  3.365258e-01
+                   50%           75%         97.5% n_eff      Rhat
+mu[1]    -5.231340e-10 -5.230580e-10 -5.229080e-10  1384 0.9996721
+mu[2]     6.952771e-07  6.981923e-07  7.034438e-07   493 1.0049522
+sigma[1]  2.991000e-12  3.038000e-12  3.131000e-12   670 1.0030952
+sigma[2]  7.497665e-08  7.566913e-08  7.741225e-08   502 1.0006755
+theta     3.374000e-01  3.380779e-01  3.389895e-01   663 1.0028885
+
+Samples were drawn using NUTS(diag_e) at Wed Jul  3 11:30:51 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./trace_hyperprecise_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+[[file:./trace_hyperprecise_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_initial_hyper_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+hist(y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_initial_hyper_precise_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_generated_hyper_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+library(dplyr)
+extracted=rstan::extract(ft)
+df_generated = data.frame(y=matrix(unlist(extracted$y_sim),nrow=length(extracted$y_sim),byrow=T))
+df_generated = sample_n(df_generated,1000)
+hist(df_generated$y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_generated_hyper_precise_prior.png]]
+
+Now we finally managed to find results close enough to the actual
+values that the generated data would look coherent. However for that
+we literally had to give the actual values as priors, which is
+absolutely unreasonable and shows that this model cannot be used.
+
+**** Gaussian mixture with less informative priors and init values
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+    vector[2] mu_mean;
+    vector[2] mu_sd;
+    vector[2] sigma_mean;
+    vector[2] sigma_sd;
+    real theta_mean;
+    real theta_sd;
+}
+
+parameters {
+    ordered[2] mu_raw;
+    vector<lower=0>[2] sigma_raw;
+    real<lower=0, upper=1> theta_raw;
+}
+transformed parameters{
+    ordered[2] mu;
+    vector<lower=0>[2] sigma;
+    real<lower=0, upper=1> theta;
+
+    mu[1]=mu_mean[1]+mu_raw[1]*mu_sd[1];
+    mu[2]=mu_mean[2]+mu_raw[2]*mu_sd[2];
+    sigma[1]=sigma_mean[1]+sigma_raw[1]*sigma_sd[1];
+    sigma[2]=sigma_mean[2]+sigma_raw[2]*sigma_sd[2];
+    theta=theta_mean+theta_raw*theta_sd;
+}
+model {
+    sigma_raw ~ normal(0, 1);
+    mu_raw ~ normal(0, 1);
+    theta_raw ~ beta(5,5);
+
+    // likelihood
+    for (n in 1:N){
+     target += log_mix(theta,
+                       normal_lpdf(y[n] | mu[1], sigma[1]),
+                       normal_lpdf(y[n] | mu[2], sigma[2]));
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[N];
+  vector[N] y_sim;
+  
+  for (n in 1:N) {
+    comp[n] = binomial_rng(1,theta)+1;
+    y_sim[n] = normal_rng(mu[comp[n]], sigma[comp[n]]);
+  }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y,mu_mean=c(-1e-10,1e-07),mu_sd=c(2e-10,2e-07),sigma_mean=c(1e-12,1e-08),sigma_sd=c(2e-12,2e-08),theta_mean=0.3,theta_sd=0.1)
+initfunction=function(){
+list(mu=c(-5e-10,7e-07),sigma=c(3e-12,7e-08),theta=0.32)
+}
+ft = sampling(sm,data=d, iter=500, chains=4,init=initfunction,control=list(adapt_delta=0.99))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 57.0179 seconds (Total)
+Chain 2:  Elapsed Time: 36.4369 seconds (Total)
+Chain 3:  Elapsed Time: 53.1921 seconds (Total)
+Chain 4:  Elapsed Time: 38.5494 seconds (Total)
+
+Warning messages:
+1: There were 99 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(ft, digits=15, pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 853434d3fc24998c4e87518841ac859a.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                  mean      se_mean           sd          2.5%           25%
+mu[1]    -1.827520e-10 7.961000e-12 1.263610e-10 -4.548290e-10 -2.661400e-10
+mu[2]     2.149125e-07 3.016410e-10 9.291591e-09  1.972239e-07  2.085608e-07
+sigma[1]  2.586000e-12 5.100000e-14 1.188000e-12  1.062000e-12  1.644000e-12
+sigma[2]  2.950988e-07 2.324920e-10 5.867691e-09  2.845327e-07  2.909662e-07
+theta     3.033668e-01 5.982856e-05 1.516077e-03  3.010776e-01  3.022887e-01
+                   50%           75%        97.5% n_eff      Rhat
+mu[1]    -1.650430e-10 -8.282400e-11 4.614000e-12   252 1.0024438
+mu[2]     2.149148e-07  2.213563e-07 2.324833e-07   949 0.9992401
+sigma[1]  2.352000e-12  3.240000e-12 5.225000e-12   543 0.9994643
+sigma[2]  2.950428e-07  2.989024e-07 3.070763e-07   637 0.9987654
+theta     3.031384e-01  3.042266e-01 3.066885e-01   642 0.9986641
+
+Samples were drawn using NUTS(diag_e) at Wed Jul  3 14:43:00 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mixture_less_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mixture_less_precise_prior.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_generated_less_precise_prior.png :exports both :width 600 :height 400 :session *R* 
+library(dplyr)
+extracted=rstan::extract(ft)
+df_generated = data.frame(y=matrix(unlist(extracted$y_sim),nrow=length(extracted$y_sim),byrow=T))
+df_generated = sample_n(df_generated,1000)
+hist(df_generated$y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_generated_less_precise_prior.png]]
+
+This time we do have the peak at the right place, but the second part
+is much more spread out, so smaller in frequency. We'll try a
+second run.
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y,mu_mean=c(-1e-10,1e-07),mu_sd=c(2e-10,2e-07),sigma_mean=c(1e-12,1e-08),sigma_sd=c(2e-12,2e-08),theta_mean=0.3,theta_sd=0.1)
+initfunction=function(){
+list(mu=c(-5e-10,7e-07),sigma=c(3e-12,7e-08),theta=0.32)
+}
+ft = sampling(sm,data=d, iter=500, chains=4,init=initfunction,control=list(adapt_delta=0.99))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 37.3822 seconds (Total)
+Chain 2:  Elapsed Time: 77.5113 seconds (Total)
+Chain 3:  Elapsed Time: 26.9622 seconds (Total)
+Chain 4:  Elapsed Time: 27.8766 seconds (Total)
+
+Warning messages:
+1: There were 81 divergent transitions after warmup. Increasing adapt_delta above 0.99 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 47 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(ft, digits=15, pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 853434d3fc24998c4e87518841ac859a.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                  mean      se_mean           sd          2.5%           25%
+mu[1]    -1.848090e-10 1.105300e-11 1.337000e-10 -4.600580e-10 -2.824040e-10
+mu[2]     2.149532e-07 2.946060e-10 9.187640e-09  1.972769e-07  2.091830e-07
+sigma[1]  2.631000e-12 5.100000e-14 1.147000e-12  1.077000e-12  1.687000e-12
+sigma[2]  2.953026e-07 2.289930e-10 5.294182e-09  2.850417e-07  2.917656e-07
+theta     3.033378e-01 7.821045e-05 1.540304e-03  3.011715e-01  3.021015e-01
+                   50%           75%        97.5% n_eff      Rhat
+mu[1]    -1.618540e-10 -7.417500e-11 4.400000e-12   146 1.0111481
+mu[2]     2.144905e-07  2.206941e-07 2.330825e-07   973 0.9995216
+sigma[1]  2.453000e-12  3.370000e-12 5.283000e-12   497 1.0070004
+sigma[2]  2.950442e-07  2.986653e-07 3.063119e-07   535 1.0013955
+theta     3.031007e-01  3.042414e-01 3.068987e-01   388 1.0022157
+
+Samples were drawn using NUTS(diag_e) at Wed Jul  3 14:57:43 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mixture_less_precise_prior_2.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mixture_less_precise_prior_2.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_generated_less_precise_prior_2.png :exports both :width 600 :height 400 :session *R* 
+library(dplyr)
+extracted=rstan::extract(ft)
+df_generated = data.frame(y=matrix(unlist(extracted$y_sim),nrow=length(extracted$y_sim),byrow=T))
+df_generated = sample_n(df_generated,1000)
+hist(df_generated$y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_generated_less_precise_prior_2.png]]
+
+There is hardly any difference between the two. Clearly the problem
+comes from the value found for sigma[2] which makes the points much
+more spread out as it is supposed to be smaller. However, without
+giving an extremely precise prior we cannot help the sample more than
+we're already doing. It's possible that this model just cannot work
+unless we have two gaussians that are pretty similar.
