@@ -7073,8 +7073,7 @@ convergence, Rhat=1).
 
 Compared to the previous results:
 
-#+RESULTS:
-#+begin_example
+                   mean
 mu[2,1]    6.455300e-11
 mu[2,2]    3.614600e-11
 mu[2,3]    1.854931e-09
@@ -7085,7 +7084,6 @@ sigma[2,2] 1.378400e-11
 sigma[2,3] 2.881900e-11
 sigma[2,4] 3.378400e-11
 sigma[2,5] 7.394641e-07
-#+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_mh2_nh2_no_prior.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit, pars=c("mu","sigma"))
@@ -7154,8 +7152,6 @@ convergence, Rhat=1).
 
 Compared to the previous results:
 
-#+RESULTS:
-#+begin_example
                    mean
 mu[1,1]    6.455300e-11
 mu[1,2]    3.614600e-11
@@ -7167,7 +7163,6 @@ sigma[1,2] 1.378400e-11
 sigma[1,3] 2.881900e-11
 sigma[1,4] 3.378400e-11
 sigma[1,5] 7.394641e-07
-#+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_mh2_nh2_no_prior_init_values.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit, pars=c("mu","sigma"))
@@ -7329,8 +7324,7 @@ convergence, Rhat=1).
 
 Compared to the previous results:
 
-#+RESULTS:
-#+begin_example
+                   mean
 mu[2,1]    6.455300e-11
 mu[2,2]    3.614600e-11
 mu[2,3]    1.854931e-09
@@ -7341,7 +7335,6 @@ sigma[2,2] 1.378400e-11
 sigma[2,3] 2.881900e-11
 sigma[2,4] 3.378400e-11
 sigma[2,5] 7.394641e-07
-#+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_mh2_nh2_vague_prior.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit, pars=c("mu","sigma"))
@@ -7484,8 +7477,7 @@ convergence, Rhat=1).
 
 Compared to the previous results:
 
-#+RESULTS:
-#+begin_example
+                   mean
 mu[2,1]    6.455300e-11
 mu[2,2]    3.614600e-11
 mu[2,3]    1.854931e-09
@@ -7496,7 +7488,6 @@ sigma[2,2] 1.378400e-11
 sigma[2,3] 2.881900e-11
 sigma[2,4] 3.378400e-11
 sigma[2,5] 7.394641e-07
-#+end_example
 
 Once again, the results found with this prior are close enough to the
 results found previously with an extremely precise prior that we can
@@ -7564,8 +7555,7 @@ convergence, Rhat=1).
 
 Compared to the previous results:
 
-#+RESULTS:
-#+begin_example
+                   mean
 mu[2,1]    6.455300e-11
 mu[2,2]    3.614600e-11
 mu[2,3]    1.854931e-09
@@ -7576,7 +7566,6 @@ sigma[2,2] 1.378400e-11
 sigma[2,3] 2.881900e-11
 sigma[2,4] 3.378400e-11
 sigma[2,5] 7.394641e-07
-#+end_example
 
 #+begin_src R :results output graphics :file ./images/trace_mh2_nh2_precise_prior_larger_sd.png :exports both :width 600 :height 400 :session *R* 
 stan_trace(fit, pars=c("mu","sigma"))
@@ -10107,3 +10096,94 @@ more spread out as it is supposed to be smaller. However, without
 giving an extremely precise prior we cannot help the sample more than
 we're already doing. It's possible that this model just cannot work
 unless we have two gaussians that are pretty similar.
+*** 2019-07-04 thursday
+**** lm vs stan
+Let's take a simple model, like a M-2 N-2 model for dgemm. The results
+of the stan fit were the following:
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: ec98b735ff133e67a71659791e2e2fed.
+8 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=2000.
+
+                 mean      se_mean           sd         2.5%          25%
+mu[1]    6.446800e-11 4.000000e-15 2.000000e-13 6.405400e-11 6.433900e-11
+mu[2]    3.483800e-11 5.600000e-14 3.417000e-12 2.815500e-11 3.254500e-11
+mu[3]    1.898298e-09 2.046000e-12 1.022110e-10 1.700526e-09 1.828444e-09
+mu[4]    3.124828e-09 1.109000e-12 6.508000e-11 2.998773e-09 3.078611e-09
+mu[5]    7.838633e-07 1.214177e-09 7.448801e-08 6.387858e-07 7.324592e-07
+sigma[1] 3.404000e-12 1.000000e-15 6.100000e-14 3.289000e-12 3.361000e-12
+sigma[2] 1.223500e-11 1.800000e-14 1.182000e-12 1.002000e-11 1.142100e-11
+sigma[3] 3.001600e-11 4.800000e-14 2.839000e-12 2.460100e-11 2.811300e-11
+sigma[4] 3.148200e-11 5.100000e-14 3.239000e-12 2.524000e-11 2.917900e-11
+sigma[5] 7.850231e-07 1.083913e-09 7.040377e-08 6.517484e-07 7.352331e-07
+                  50%          75%        97.5% n_eff      Rhat
+mu[1]    6.447600e-11 6.460100e-11 6.486400e-11  2288 0.9992614
+mu[2]    3.482700e-11 3.717600e-11 4.167300e-11  3759 0.9993119
+mu[3]    1.898794e-09 1.967225e-09 2.095195e-09  2495 0.9994625
+mu[4]    3.127444e-09 3.167501e-09 3.250138e-09  3445 0.9972609
+mu[5]    7.841385e-07 8.367408e-07 9.249504e-07  3764 0.9980433
+sigma[1] 3.404000e-12 3.446000e-12 3.524000e-12  3193 0.9976414
+sigma[2] 1.221800e-11 1.298100e-11 1.469000e-11  4514 0.9970022
+sigma[3] 3.005000e-11 3.197300e-11 3.559300e-11  3455 0.9978838
+sigma[4] 3.146900e-11 3.365600e-11 3.778200e-11  4068 0.9984935
+sigma[5] 7.843223e-07 8.331268e-07 9.298525e-07  4219 0.9988116
+
+Samples were drawn using NUTS(diag_e) at Tue May 28 16:43:59 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+Now we'll compare with a classical linear regression.
+
+#+begin_src R :results output :session *R* :exports both
+library(dplyr)
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+
+names(data)=c("m","n","k","duration","cpu")
+data$mnk=data$m * data$n * data$k
+data$mn=data$m * data$n
+data$mk=data$m * data$k
+data$nk=data$n * data$k
+tmp=select(filter(data, (data$m)*(data$n)*(data$k) < 2e10),everything())
+t=sample_n(tmp,500)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+a=lm(duration~mnk+mn+mk+nk,data=t)
+summary(a)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+Call:
+lm(formula = duration ~ mnk + mn + mk + nk, data = t)
+
+Residuals:
+      Min        1Q    Median        3Q       Max 
+-0.036197 -0.010162 -0.004630  0.000238  0.188805 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 8.074e-04  2.146e-03   0.376    0.707    
+mnk         6.434e-11  4.353e-13 147.805   <2e-16 ***
+mn          3.114e-11  1.408e-10   0.221    0.825    
+mk          1.658e-09  1.076e-10  15.413   <2e-16 ***
+nk          2.995e-09  2.357e-10  12.710   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.02386 on 495 degrees of freedom
+Multiple R-squared:  0.9856,	Adjusted R-squared:  0.9855 
+F-statistic:  8459 on 4 and 495 DF,  p-value: < 2.2e-16
+#+end_example
+
+As we've noticed before, the intercept value is completely off when we
+use lm, and the standard error for the parameters tends to be a bit
+higher than when using stan.
+
+**** lm vs stanarm
