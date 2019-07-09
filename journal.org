@@ -169,7 +169,7 @@ parameters than the ones printed by HPL. It was also found that the
 communications had been optimized for the run, which explains the
 difference between the simulation and the reality.
 
-*** 2019-04-30 tuesday
+*** 2019-04-31 tuesday
 **** Installed Emacs and Org-mode and all required dependencies. :ORGMODE:
 Followed the given MOOC to understand how Org-mode functions, and how
 to take efficient notes. Learned the basics of org-mode, and of the
@@ -9789,6 +9789,7 @@ transformed parameters{
     vector<lower=0>[2] sigma;
     real<lower=0, upper=1> theta;
 
+real a = round(theta_raw);
     mu[1]=-5.2e-10+mu_raw[1]*2e-11;
     mu[2]=6.9e-07+mu_raw[2]*2e-08;
     sigma[1]=2.8e-12+sigma_raw[1]*2e-13;
@@ -9819,6 +9820,8 @@ generated quantities {
 "
 sm = stan_model(model_code = model)
 #+end_src
+
+#+RESULTS:
 
 #+begin_src R :results output :session *R* :exports both
 d = list(N,y)
@@ -10186,4 +10189,606 @@ As we've noticed before, the intercept value is completely off when we
 use lm, and the standard error for the parameters tends to be a bit
 higher than when using stan.
 
-**** lm vs stanarm
+*** 2019-07-05 friday
+**** Made a first plan for the report 
+**** Add the gaussian mixture part to the hierarchical model
+
+#+begin_src R :results output :session *R* :exports both
+model = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real alpha_mean;
+    real alpha_sd;
+    real beta_mean;
+    real beta_sd;
+    real theta_mean;
+    real theta_sd;
+    real gamma_mean;
+    real gamma_sd;
+}
+parameters {
+    //The raw parameters
+
+    real<lower=0, upper=1> delta;
+    ordered[2] alpha_raw[hosts];
+    vector[hosts] beta_raw;
+    vector<lower=0>[hosts] theta_raw;
+    vector<lower=0>[hosts] gamma_raw;
+
+    //The hyper raw parameters
+
+    real hyper_alpha_raw;
+    real hyper_beta_raw;
+    real<lower=0> hyper_theta_raw;
+    real<lower=0> hyper_gamma_raw;
+
+    //The hyper parameters sigma
+
+    real<lower=0> sigma_alpha;
+    real<lower=0> sigma_beta;
+    real<lower=0> sigma_theta;
+    real<lower=0> sigma_gamma;
+}
+transformed parameters {
+    //The real parameters
+
+    ordered[2] alpha[hosts];
+    vector[hosts] beta;
+    vector<lower=0>[hosts] theta;
+    vector<lower=0>[hosts] gamma;
+
+    //The hyper parameters mu
+
+    real mu_alpha;
+    real mu_beta;
+    real mu_theta;
+    real mu_gamma;
+
+    //The priors for the hyper parameters mu
+
+    mu_alpha = alpha_mean+ hyper_alpha_raw * alpha_sd;
+    mu_beta = beta_mean+ hyper_beta_raw * beta_sd;
+    mu_theta = theta_mean+ hyper_theta_raw * theta_sd;
+    mu_gamma= gamma_mean+ hyper_gamma_raw * gamma_sd;
+
+    //The priors for the parameters
+    for(i in 1:hosts){
+      alpha[i,1] = mu_alpha + alpha_raw[i,1] * sigma_alpha;
+      alpha[i,2] = mu_alpha + alpha_raw[i,2] * sigma_alpha;
+    }
+    beta = mu_beta + beta_raw * sigma_beta;
+    theta = mu_theta + theta_raw * sigma_theta;
+    gamma = mu_gamma + gamma_raw * sigma_gamma;
+}
+model {
+    //The priors for the raw parameters
+    delta ~ beta(5,5);
+    for(i in 1:hosts){
+      alpha_raw[i,1] ~ normal(0,1);
+      alpha_raw[i,2] ~ normal(0,1);
+    }
+    beta_raw ~ normal(0,1);
+    theta_raw ~ normal(0,1);
+    gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+    hyper_theta_raw ~ normal(0,1);
+    hyper_gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(0,1);
+    sigma_beta ~ normal(0,1);
+    sigma_theta ~ normal(0,1);
+    sigma_gamma ~ normal(0,1);
+
+    //The likelihood
+
+    for(i in 1:hosts){
+      target += log_mix(delta, normal_lpdf(duration[i] | alpha[i,1]+beta[i], theta[i]+gamma[i]), normal_lpdf(duration[i] | alpha[i,2]+beta[i], theta[i]+gamma[i]));
+    }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, (data$m)*(data$n)*(data$k) < 2e10),everything())
+
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),1000)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+dt = list(N=1000,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=1e-06,alpha_mean=1e-10,alpha_sd=1e-11,theta_mean=1e-05,theta_sd=1e-06,gamma_mean=1e-10,gamma_sd=1e-11)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 296.576 seconds (Total)
+Chain 2:  Elapsed Time: 298.351 seconds (Total)
+Chain 4:  Elapsed Time: 300.195 seconds (Total)
+Chain 3:  Elapsed Time: 300.564 seconds (Total)
+
+Warning messages:
+1: There were 1000 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+2: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("delta","mu_alpha","mu_beta","mu_theta","mu_gamma","sigma_alpha","sigma_beta","sigma_theta","sigma_gamma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+                    mean      se_mean           sd         
+delta            8.518230e-02 2.052976e-03 3.650746e-02
+mu_alpha         1.000430e-10 2.320000e-13 1.044000e-11
+mu_beta          1.002638e-05 2.256389e-08 9.509825e-07
+mu_theta         1.077580e-10 2.020000e-13 5.398000e-12
+mu_gamma         1.078546e-05 1.927021e-08 5.813737e-07
+sigma_alpha      3.183139e-01 1.074961e-03 2.600111e-02
+sigma_beta       4.910052e-02 1.581812e-03 3.667927e-02
+sigma_theta      1.131448e-01 5.584111e-04 1.413804e-02
+sigma_gamma      1.133853e-01 6.307119e-04 1.492428e-02
+#+end_example
+
+Compared to the previous results:
+
+                    mean      se_mean           sd
+mu_alpha    7.002400e-11 2.100000e-14 5.880000e-13
+mu_beta     5.824635e-06 2.529109e-08 8.139336e-07
+mu_teta     1.000030e-10 0.000000e+00 4.000000e-15
+mu_gamma    1.012941e-05 4.135314e-09 1.191117e-07
+sigma_alpha 9.930000e-13 3.700000e-14 7.100000e-13
+sigma_beta  1.419913e-06 6.040712e-08 1.033809e-06
+sigma_teta  4.000000e-15 0.000000e+00 4.000000e-15
+sigma_gamma 1.892875e-07 6.929783e-09 1.962028e-07
+
+The difference in the results shows that not only are the values for
+mu too high for mu_alpha and mu_beta, but all of the values of sigma are
+completely off. That's probably because our prior for
+sigma~normal(0,1) is not informative enough.
+
+#+begin_src R :results output :session *R* :exports both
+model = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    real alpha_mean;
+    real alpha_sd;
+    real beta_mean;
+    real beta_sd;
+    real theta_mean;
+    real theta_sd;
+    real gamma_mean;
+    real gamma_sd;
+}
+parameters {
+    //The raw parameters
+
+    real<lower=0, upper=1> delta;
+    ordered[2] alpha_raw[hosts];
+    vector[hosts] beta_raw;
+    vector<lower=0>[hosts] theta_raw;
+    vector<lower=0>[hosts] gamma_raw;
+
+    //The hyper raw parameters
+
+    real hyper_alpha_raw;
+    real hyper_beta_raw;
+    real<lower=0> hyper_theta_raw;
+    real<lower=0> hyper_gamma_raw;
+
+    //The hyper parameters sigma
+
+    real<lower=0> sigma_alpha;
+    real<lower=0> sigma_beta;
+    real<lower=0> sigma_theta;
+    real<lower=0> sigma_gamma;
+}
+transformed parameters {
+    //The real parameters
+
+    ordered[2] alpha[hosts];
+    vector[hosts] beta;
+    vector<lower=0>[hosts] theta;
+    vector<lower=0>[hosts] gamma;
+
+    //The hyper parameters mu
+
+    real mu_alpha;
+    real mu_beta;
+    real mu_theta;
+    real mu_gamma;
+
+    //The priors for the hyper parameters mu
+
+    mu_alpha = alpha_mean+ hyper_alpha_raw * alpha_sd;
+    mu_beta = beta_mean+ hyper_beta_raw * beta_sd;
+    mu_theta = theta_mean+ hyper_theta_raw * theta_sd;
+    mu_gamma= gamma_mean+ hyper_gamma_raw * gamma_sd;
+
+    //The priors for the parameters
+    for(i in 1:hosts){
+      alpha[i,1] = mu_alpha + alpha_raw[i,1] * sigma_alpha;
+      alpha[i,2] = mu_alpha + alpha_raw[i,2] * sigma_alpha;
+    }
+    beta = mu_beta + beta_raw * sigma_beta;
+    theta = mu_theta + theta_raw * sigma_theta;
+    gamma = mu_gamma + gamma_raw * sigma_gamma;
+}
+model {
+    //The priors for the raw parameters
+    delta ~ beta(5,5);
+    for(i in 1:hosts){
+      alpha_raw[i,1] ~ normal(0,1);
+      alpha_raw[i,2] ~ normal(0,1);
+    }
+    beta_raw ~ normal(0,1);
+    theta_raw ~ normal(0,1);
+    gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+    hyper_theta_raw ~ normal(0,1);
+    hyper_gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(mu_alpha,1e-10);
+    sigma_beta ~ normal(mu_beta,1e-05);
+    sigma_theta ~ normal(mu_theta,1e-10);
+    sigma_gamma ~ normal(mu_gamma,1e-05);
+
+    //The likelihood
+
+    for(i in 1:hosts){
+      target += log_mix(delta, normal_lpdf(duration[i] | alpha[i,1]+beta[i], theta[i]+gamma[i]), normal_lpdf(duration[i] | alpha[i,2]+beta[i], theta[i]+gamma[i]));
+    }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=1000,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=2e-05,alpha_mean=1e-10,alpha_sd=2e-10,theta_mean=1e-05,theta_sd=2e-05,gamma_mean=1e-10,gamma_sd=2e-10)
+
+initfunction=function(){
+  list(mu_alpha=1e-11,mu_beta=1e-06,mu_theta=1e-10,mu_gamma=1e-05)
+}
+
+fit = sampling(sm,data=dt, iter=500, chains=4, init=initfunction)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 3:  Elapsed Time: 59.4539 seconds (Total)
+Chain 1:  Elapsed Time: 93.908 seconds (Total)
+Chain 4:  Elapsed Time: 112.833 seconds (Total)
+Chain 2:  Elapsed Time: 145.872 seconds (Total)
+#+end_example
+
+The result of this fit is in the file fit-hierarchical-mixture.csv
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("delta","mu_alpha","mu_beta","mu_theta","mu_gamma","sigma_alpha","sigma_beta","sigma_theta","sigma_gamma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 118a04b5bdfa97c4867050a50c93e654.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                    mean      se_mean           sd          2.5%          25%
+delta       5.009924e-01 3.441785e-03 1.481173e-01  2.152240e-01 3.989959e-01
+mu_alpha    1.903950e-10 5.097000e-12 1.554180e-10 -6.728600e-11 7.557500e-11
+mu_beta     1.090824e-03 3.353642e-06 5.848030e-05  9.792190e-04 1.052245e-03
+mu_theta    2.696600e-10 5.478000e-12 1.208400e-10  1.105900e-10 1.745710e-10
+mu_gamma    5.414476e-03 4.944816e-07 1.429632e-05  5.386777e-03 5.405092e-03
+sigma_alpha 2.176060e-10 5.812000e-12 1.576710e-10  1.497400e-11 9.194800e-11
+sigma_beta  1.327049e-03 4.106734e-06 7.226020e-05  1.184488e-03 1.279652e-03
+sigma_theta 2.724030e-10 6.881000e-12 1.441940e-10  3.729200e-11 1.654100e-10
+sigma_gamma 6.730759e-03 4.907275e-07 1.417105e-05  6.701338e-03 6.721599e-03
+                     50%          75%        97.5% n_eff      Rhat
+delta       5.009148e-01 6.045300e-01 7.843081e-01  1852 0.9985798
+mu_alpha    1.768370e-10 2.770540e-10 5.225900e-10   930 1.0048453
+mu_beta     1.089503e-03 1.130726e-03 1.204895e-03   304 1.0050276
+mu_theta    2.465530e-10 3.363910e-10 5.633660e-10   487 1.0032100
+mu_gamma    5.414705e-03 5.423941e-03 5.441920e-03   836 1.0011688
+sigma_alpha 1.848230e-10 3.161310e-10 5.964150e-10   736 1.0046852
+sigma_beta  1.325024e-03 1.376222e-03 1.469972e-03   310 1.0048826
+sigma_theta 2.618630e-10 3.622280e-10 5.721220e-10   439 1.0068134
+sigma_gamma 6.731054e-03 6.739918e-03 6.756926e-03   834 0.9978193
+
+Samples were drawn using NUTS(diag_e) at Mon Jul  8 10:37:34 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1)
+#+end_example
+
+Even with more precise priors for sigma_alpha, sigma_beta, sigma_theta
+and sigma_gamma, the results remain too unprecise compared to the first
+results we found.
+*** 2019-07-08 monday
+**** A second try with gaussian mixture and the hierarchical model
+
+The idea with this model was write alpha explicitally as a gaussian
+mixture. 
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+modelString = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] mnk; //N*hosts observations of the value of mnk
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of d$
+
+    //The priors
+
+    real alpha_mean1;
+    real<lower=alpha_mean1> alpha_mean2;
+    real alpha_sd1;
+    real alpha_sd2;
+    real beta_mean;
+    real beta_sd;
+    real theta_mean;
+    real theta_sd;
+    real gamma_mean;
+    real gamma_sd;
+}
+parameters {
+    //The raw parameters
+    
+    real<lower=0, upper=1> delta;
+    vector[hosts] alpha_raw;
+    vector[hosts] beta_raw;
+    vector<lower=0>[hosts] theta_raw;
+    vector<lower=0>[hosts] gamma_raw;
+
+    //The hyper raw parameters
+   
+    real hyper_alpha_raw;
+    real hyper_beta_raw;
+    real<lower=0> hyper_theta_raw;
+    real<lower=0> hyper_gamma_raw;
+
+    //The hyper parameters sigma
+
+    vector<lower=0>[2] sigma_alpha;
+    real<lower=0> sigma_beta;
+    real<lower=0> sigma_theta;
+    real<lower=0> sigma_gamma;
+}
+transformed parameters {
+    
+    //The real parameters
+    vector[hosts] alpha;
+    vector[hosts] beta;
+    vector<lower=0>[hosts] theta;
+    vector<lower=0>[hosts] gamma;
+
+//The hyper parameters mu
+
+    ordered[2] mu_alpha;
+    real mu_beta;
+    real<lower=0> mu_theta;
+    real<lower=0> mu_gamma;
+
+    //The priors for the hyper parameters mu
+
+    mu_alpha[1] = alpha_mean1+ hyper_alpha_raw * alpha_sd1;
+    mu_alpha[2] = alpha_mean2+ hyper_alpha_raw * alpha_sd2;
+    mu_beta = beta_mean+ hyper_beta_raw * beta_sd;
+    mu_theta = theta_mean+ hyper_theta_raw * theta_sd;
+    mu_gamma= gamma_mean+ hyper_gamma_raw * gamma_sd;
+
+    //The priors for the parameters
+    
+for(i in 1:hosts){
+    alpha[i] = mu_alpha[i%2+1]+alpha_raw[i]*sigma_alpha[i%2+1];
+}    
+beta = mu_beta + beta_raw * sigma_beta;
+    theta = mu_theta + theta_raw * sigma_theta;
+    gamma = mu_gamma + gamma_raw * sigma_gamma;
+}
+model {
+    //The priors for the raw parameters
+    alpha_raw ~ normal(0,1);
+    beta_raw ~ normal(0,1);
+    theta_raw ~ normal(0,1);
+    gamma_raw ~ normal(0,1);
+
+//The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+    hyper_theta_raw ~ normal(0,1);
+    hyper_gamma_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(mu_alpha,1e-10);
+    sigma_beta ~ normal(mu_beta,1e-05);
+    sigma_theta ~ normal(mu_theta,1e-10);
+    sigma_gamma ~ normal(mu_gamma,1e-05);
+
+    //The likelihood
+    for(i in 1:hosts){
+      target += log_mix(delta, normal_lpdf(alpha[i] | mu_alpha[1], sigma_alpha[1]), normal_lpdf(alpha[i] | mu_alpha[2], sigma_alpha[2]));
+    }
+    for(i in 1:hosts){
+      duration[i] ~ normal(alpha[i]*mnk[i]+beta[i], theta[i]*mnk[i]+gamma[i]);
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[hosts];
+  vector[hosts] alpha_pos;
+
+  for (n in 1:hosts) {
+    comp[n] = binomial_rng(1,theta);
+    comp[n]=comp[n]+1;
+    alpha_pos[n] = normal_rng(mu_alpha[comp[n]], sigma_alpha[comp[n]]);
+  }
+}
+
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, (data$m)*(data$n)*(data$k) < 2e10),everything())
+
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+}
+mnk=lapply(t_i, '[[', 1)
+duration=lapply(t_i, '[[', 2)
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=1e-06,alpha_mean1=1e-10,alpha_mean2=7e-10,alpha_sd1=1e-11,alpha_sd2=1e-11,theta_mean=1e-05,theta_sd=1e-06,gamma_mean=1e-10,gamma_sd=1e-11)
+
+fit = sampling(sm,data=dt, iter=500, chains=4)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Chain 1:  Elapsed Time: 1007.7 seconds (Total)
+Chain 3:  Elapsed Time: 1083.78 seconds (Total)
+Chain 2:  Elapsed Time: 1150.16 seconds (Total)
+Chain 4:  Elapsed Time: 1197.65 seconds (Total)
+
+Warning messages:
+1: There were 216 divergent transitions after warmup. Increasing adapt_delta above 0.8 may help. See
+http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup 
+2: There were 754 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+http://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded 
+3: Examine the pairs() plot to diagnose sampling problems
+#+end_example
+
+The result of this fit in in the file fit-hierarchical-2.csv
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("delta","mu_alpha","mu_beta","mu_theta","mu_gamma","sigma_alpha","sigma_beta","sigma_theta","sigma_gamma"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 8466baa4e55f4a9ef88a94e0e6175fce.
+4 chains, each with iter=500; warmup=250; thin=1; 
+post-warmup draws per chain=250, total post-warmup draws=1000.
+
+                       mean      se_mean           sd         2.5%          25%
+delta          9.172760e-01 3.818595e-02 5.406099e-02 8.224972e-01 9.093318e-01
+mu_alpha[1]    6.985900e-11 4.580000e-13 6.500000e-13 6.904200e-11 6.928600e-11
+mu_alpha[2]    4.698590e-10 4.580000e-13 6.500000e-13 4.690420e-10 4.692860e-10
+mu_beta        8.873488e-06 1.044842e-06 1.479713e-06 6.691300e-06 7.874288e-06
+mu_theta       1.000130e-10 7.000000e-15 9.000000e-15 1.000060e-10 1.000080e-10
+mu_gamma       1.044195e-05 1.661806e-07 2.361340e-07 1.017763e-05 1.021604e-05
+sigma_alpha[1] 1.000000e-15 0.000000e+00 0.000000e+00 1.000000e-15 1.000000e-15
+sigma_alpha[2] 2.999450e-10 2.577500e-11 3.648800e-11 2.391550e-10 2.884820e-10
+sigma_beta     2.001568e-06 9.792648e-07 1.386700e-06 3.578180e-07 1.055119e-06
+sigma_theta    1.400000e-14 9.000000e-15 1.200000e-14 0.000000e+00 6.000000e-15
+sigma_gamma    8.985228e-07 4.193090e-07 5.940863e-07 4.731312e-07 5.604041e-07
+                        50%          75%        97.5% n_eff       Rhat
+delta          9.453795e-01 9.525539e-01 9.551898e-01     2 115.884843
+mu_alpha[1]    6.977700e-11 7.031800e-11 7.085000e-11     2  18.879922
+mu_alpha[2]    4.697770e-10 4.703180e-10 4.708500e-10     2  18.879922
+mu_beta        9.291445e-06 1.022942e-05 1.032067e-05     2  59.423499
+mu_theta       1.000090e-10 1.000150e-10 1.000300e-10     2  72.435090
+mu_gamma       1.043154e-05 1.066023e-05 1.073301e-05     2  25.610072
+sigma_alpha[1] 1.000000e-15 1.000000e-15 1.000000e-15     2   3.144965
+sigma_alpha[2] 3.138420e-10 3.253780e-10 3.328470e-10     2 936.727621
+sigma_beta     1.783625e-06 2.680979e-06 4.172695e-06     2  59.631810
+sigma_theta    1.000000e-14 1.800000e-14 3.500000e-14     2  54.339816
+sigma_gamma    5.909754e-07 9.442689e-07 1.975278e-06     2  46.098170
+#+end_example
+
+Here we have several incoherent values, like delta. Assuming delta was
+so close to one, the histogram of alpha would show two gaussians, with
+one clearly bigger than the other and that isn't the case. Also the
+two values for mu_alpha are too far away from each other. For the other
+parameters the results are coherent, and close to the first results
+with a hierarchical model.
+
+To show that we have incoherent values for alpha, we'll generate some
+alphas from the values of mu_alpha and sigma_alpha that we have, and
+look at the histogram.
+
+#+begin_src R :results output :session *R* :exports both
+d=read.csv("~/Documents/org/fit_hierarchical_2.csv")
+d=d[,-1]
+names(d)=c("delta","mu_alpha.1","mu_alpha.2","mu_beta","mu_theta","mu_gamma","sigma_alpha.1","sigma_alpha.2","sigma_beta","sigma_theta","sigma_gamma")
+z=rbinom(500,1,d$delta)
+mu_alpha=matrix(c(d$mu_alpha.1,d$mu_alpha.2),nrow=length(d$mu_alpha.1),byrow=T)
+sigma_alpha=matrix(c(d$sigma_alpha.1,d$sigma_alpha.2),nrow=length(d$sigma_alpha.1),byrow=T)
+alpha=rnorm(n=500,mean=mu_alpha[,z],sd=sigma_alpha[,z])
+#+end_src
+
+We'll look at the histogram of the mu_alpha values, to see how it
+looks.
+
+#+begin_src R :results output graphics :file ./images/hist_mualpha.png :exports both :width 600 :height 400 :session *R* 
+hist(mu_alpha)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_mualpha.png]]
+Unsurprisingly considering the results, the histogram shows values
+that are completely separated and do not represent this parameters the
+way it should (see the histogram on thursday, the 27th of june).
+
+#+begin_src R :results output graphics :file ./images/hist_alpha.png :exports both :width 600 :height 400 :session *R* 
+hist(alpha)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_alpha.png]]
+
+Likewise, the values generated for alpha are off.
+
+The problem clearly comes from our model, probably with the prior we
+give to alpha which considers a delta of 0.5 , and the prior we give
+to mu_alpha and sigma_alpha. This model needs to be rewritten once again.
+
+**** Started writing the report

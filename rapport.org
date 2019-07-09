@@ -21,6 +21,8 @@
 * Related Work: Bayesian Sampling (2p)
 ** Principe des samplers bayésiens
 - avantage par rapport à une régression linéaire simple
+- utiliser des priors
+- vérifier les résultats: convergence des chaînes, histogramme paramètres
 ** Stan Écosystème
 * Méthodologie (1-2p)
   - outils utilisés: orgmode, rstudio, stan, grid5000,...
@@ -35,13 +37,12 @@
   - modèles hiérarchiques
   - mixture gaussienne pour un paramètre?
 ** Rendre le fit le plus précis possible
-- étude des priors
-- donner des valeurs initiales
 - techniques d'écriture des modèles: paramétrisation non centrée,
   décomposition QR, ...
-** Vérifier les résultats et évaluer les modèles
-- convergence des chaînes
-- visualisation postérieur/histogramme paramètres
+- étude des priors (convergence, résultats, temps)
+- donner des valeurs initiales
+** évaluer les modèles
+- visualisation postérieur/ggpairs
 - générer de nouvelles données (pour le moment avec stan)
 * Conclusion et Future Work (2p)
 - Adapter modèles aux communications réseau
