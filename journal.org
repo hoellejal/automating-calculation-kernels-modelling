@@ -8012,7 +8012,7 @@ v=rep(1:64,each=1000)
 dtf=data.frame(intercept=matrix(unlist(extracted$intercept),nrow=length(extracted$intercept),byrow=T), mu=matrix(unlist(extracted$mu), nrow=length(extracted$mu), byrow=T), sigma=matrix(unlist(extracted$sigma), nrow=length(extracted$sigma), byrow=T),cpu=v)
 
 #We save the generated parameters in a file for later use
-write.csv(dtf,file="~/Documents/org/fit.csv")
+write.csv(dtf,file="~/Documents/org/fit_mh1.csv")
 
 dtt=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
 #+end_src
@@ -8039,7 +8039,7 @@ To avoid making the fit again, we'll generate parameters values from
 the results we got from the fit.
 
 #+begin_src R :results output :session *R* :exports both
-d=read.csv(file="~/Documents/org/fit.csv", header=TRUE, sep=",")
+d=read.csv(file="~/Documents/org/fit_mh1.csv", header=TRUE, sep=",")
 d=subset(d,select = c("intercept","mu","sigma","cpu"))
 means=aggregate(d[,1:3],list(d$cpu),mean) 
 #a dataframe of means per host for all of the parameters
@@ -8273,7 +8273,7 @@ stan_hist(fit,pars=c("intercept[1]","mu[1]","sigma[1]","noise[1]"))
 extracted=rstan::extract(fit)
 v=rep(1:64,each=250)
 dtf=data.frame(intercept=matrix(unlist(extracted$intercept),nrow=length(extracted$intercept),byrow=T), mu=matrix(unlist(extracted$mu), nrow=length(extracted$mu), byrow=T), sigma=matrix(unlist(extracted$sigma), nrow=length(extracted$sigma), byrow=T),cpu=v)
-write.csv(dtf,file="~/Documents/org/fit.csv")
+write.csv(dtf,file="~/Documents/org/fit_mh1.csv")
 dtt=data.frame(intercept=colMeans(extracted$intercept),mu=colMeans(extracted$mu),sigma=colMeans(extracted$sigma))
 #+end_src
 
@@ -10654,17 +10654,6 @@ model {
       duration[i] ~ normal(alpha[i]*mnk[i]+beta[i], theta[i]*mnk[i]+gamma[i]);
     }
 }
-generated quantities {
-  int<lower=1,upper=2> comp[hosts];
-  vector[hosts] alpha_pos;
-
-  for (n in 1:hosts) {
-    comp[n] = binomial_rng(1,theta);
-    comp[n]=comp[n]+1;
-    alpha_pos[n] = normal_rng(mu_alpha[comp[n]], sigma_alpha[comp[n]]);
-  }
-}
-
 "
 sm = stan_model(model_code = modelString)
 #+end_src
