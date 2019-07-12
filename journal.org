@@ -9789,7 +9789,6 @@ transformed parameters{
     vector<lower=0>[2] sigma;
     real<lower=0, upper=1> theta;
 
-real a = round(theta_raw);
     mu[1]=-5.2e-10+mu_raw[1]*2e-11;
     mu[2]=6.9e-07+mu_raw[2]*2e-08;
     sigma[1]=2.8e-12+sigma_raw[1]*2e-13;
@@ -9820,8 +9819,6 @@ generated quantities {
 "
 sm = stan_model(model_code = model)
 #+end_src
-
-#+RESULTS:
 
 #+begin_src R :results output :session *R* :exports both
 d = list(N,y)
@@ -10675,7 +10672,7 @@ for(i in 1:length(unique(tmp$cpu))){
 }
 mnk=lapply(t_i, '[[', 1)
 duration=lapply(t_i, '[[', 2)
-dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=1e-06,alpha_mean1=1e-10,alpha_mean2=7e-10,alpha_sd1=1e-11,alpha_sd2=1e-11,theta_mean=1e-05,theta_sd=1e-06,gamma_mean=1e-10,gamma_sd=1e-11)
+dt = list(N=500,hosts=length(unique(tmp$cpu)),mnk=mnk,duration=duration,beta_mean=1e-05,beta_sd=1e-06,alpha_mean1=1e-10,alpha_mean2=7e-10,alpha_sd1=1e-11,alpha_sd2=1e-11,gamma_mean=1e-05,gamma_sd=1e-06,theta_mean=1e-10,theta_sd=1e-11)
 
 fit = sampling(sm,data=dt, iter=500, chains=4)
 #+end_src
@@ -10763,6 +10760,7 @@ hist(mu_alpha)
 
 #+RESULTS:
 [[file:./images/hist_mualpha.png]]
+
 Unsurprisingly considering the results, the histogram shows values
 that are completely separated and do not represent this parameters the
 way it should (see the histogram on thursday, the 27th of june).
@@ -10777,7 +10775,361 @@ hist(alpha)
 Likewise, the values generated for alpha are off.
 
 The problem clearly comes from our model, probably with the prior we
-give to alpha which considers a delta of 0.5 , and the prior we give
+give to alpha which considers a delta of 0.5, and the prior we give
 to mu_alpha and sigma_alpha. This model needs to be rewritten once again.
 
 **** Started writing the report
+*** 2019-07-09 tuesday
+**** Another test with Gaussian mixture and priors
+This time we want to see if we can get precise parameters without
+giving the exact values as priors.
+
+#+begin_src R :results output :session *R* :exports both
+library(rstan)
+library(dplyr)
+mu = c(-5.23e-10, 6.92e-07)
+sigma = c(2.87e-12, 7.45e-08)
+lam = 0.32
+N = 1000
+z=rbinom(n=N,size=1,prob=lam)+1
+y =rnorm(n=N, mean=mu[z],sd=sigma[z])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+model ="
+data {
+    int<lower=0> N;
+    vector[N] y;
+    real mu_m1;
+    real mu_m2;
+    real mu_s1;
+    real mu_s2;
+    real sigma_m1;
+    real sigma_m2;
+    real sigma_s1;
+    real sigma_s2;
+    real theta_m;
+    real theta_s;
+}
+
+parameters {
+    ordered[2] mu_raw;
+    vector<lower=0>[2] sigma_raw;
+    real<lower=0, upper=1> theta_raw;
+}
+transformed parameters{
+    ordered[2] mu;
+    vector<lower=0>[2] sigma;
+    real<lower=0, upper=1> theta;
+
+    mu[1]=mu_m1+mu_raw[1]*mu_s1;
+    mu[2]=mu_m2+mu_raw[2]*mu_s2;
+    sigma[1]=sigma_m1+sigma_raw[1]*sigma_s1;
+    sigma[2]=sigma_m2+sigma_raw[2]*sigma_s2;
+    theta=theta_m+theta_raw*theta_s;
+}
+model {
+    sigma_raw ~ normal(0, 1);
+    mu_raw ~ normal(0, 1);
+    theta_raw ~ beta(2,2);
+
+    // likelihood
+    for (n in 1:N){
+     target += log_mix(theta,
+                       normal_lpdf(y[n] | mu[1], sigma[1]),
+                       normal_lpdf(y[n] | mu[2], sigma[2]));
+    }
+}
+generated quantities {
+  int<lower=1,upper=2> comp[N];
+  vector[N] y_sim;
+  
+  for (n in 1:N) {
+    comp[n] = binomial_rng(1,theta)+1;
+    y_sim[n] = normal_rng(mu[comp[n]], sigma[comp[n]]);
+  }
+}
+"
+sm = stan_model(model_code = model)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+d = list(N,y,mu_m1=-1e-10,mu_m2=1e-07,mu_s1=2e-10,mu_s2=2e-07,sigma_m1=1e-12,sigma_m2=1e-08,sigma_s1=2e-12,sigma_s2=2e-08,theta_m=0.3,theta_s=0.2)
+
+initfunction=function(){
+  list(mu=c(-1e-10,1e-07),sigma=c(1e-12,1e-08),theta=0.3)
+}
+
+ft = sampling(sm,data=d, iter=2000, chains=4,control=list(adapt_delta=0.99,max_treedepth=15),init=initfunction)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(ft,digits=15,pars=c("mu","sigma","theta"))
+extracted=rstan::extract(ft)
+df_generated = data.frame(y=matrix(unlist(extracted$y_sim),nrow=length(extracted$y_sim),byrow=T))
+df_generated = sample_n(df_generated,1000)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: 160c509127bc07f0dbf7d8e63fa2689c.
+4 chains, each with iter=2000; warmup=1000; thin=1; 
+post-warmup draws per chain=1000, total post-warmup draws=4000.
+
+                  mean      se_mean          sd          2.5%           25%           50%
+mu[1]    -3.607960e-10 1.166130e-10 1.83605e-10 -5.230840e-10 -5.229080e-10 -5.113940e-10
+mu[2]     4.502485e-07 1.726224e-07 2.44263e-07  1.915547e-07  2.062323e-07  4.594738e-07
+sigma[1]  2.748000e-12 3.600000e-14 8.53000e-13  1.149000e-12  2.332000e-12  2.884000e-12
+sigma[2]  1.812029e-07 7.814414e-08 1.10610e-07  6.617715e-08  7.061145e-08  1.778255e-07
+theta     3.994853e-01 6.935689e-02 9.81173e-02  3.002394e-01  3.011446e-01  3.974102e-01
+                   75%         97.5% n_eff      Rhat
+mu[1]    -1.834570e-10 -2.340200e-11     2  2.268591
+mu[2]     6.944477e-07  7.009030e-07     2 38.059784
+sigma[1]  2.988000e-12  4.815000e-12   559  1.022153
+sigma[2]  2.915041e-07  3.010753e-07     2 27.000023
+theta     4.978886e-01  4.995432e-01     2 78.412892
+
+Samples were drawn using NUTS(diag_e) at Wed Jul 10 11:50:03 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/trace_mixture_remade.png :exports both :width 600 :height 400 :session *R* 
+stan_trace(ft,pars=c("mu","sigma","theta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/trace_mixture_remade.png]]
+
+#+begin_src R :results output graphics :file ./images/hist_mixture_remade.png :exports both :width 600 :height 400 :session *R* 
+hist(df_generated$y,100)
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_mixture_remade.png]]
+
+The traces still don't really converge well but the results are
+pretty close to the real values and the histogram of generated values
+is rather close to the first histogram too.
+*** 2019-07-11 thursday
+**** Another test with the M_H-2 hierarchical model
+We rewrote the model, and tried running it with init values and more
+iterations.
+
+#+begin_src R :results output :session *R* :exports both
+modelString = "data {
+    //The model's data
+
+    int<lower=0> N; //number of observations
+    int<lower=0> hosts; //number of different hosts
+    matrix[hosts,N] m; //N*hosts observations of the values of m, n and k
+    matrix[hosts,N] n;
+    matrix[hosts,N] k;
+    matrix<lower=0>[hosts,N] duration; //N*hosts observations of the duration of dgemm
+
+    //The priors
+
+    vector[5] alpha_mean;
+    vector[5] alpha_sd;
+    vector[5] beta_mean;
+    vector[5] beta_sd;
+}
+transformed data {
+    //The calculated data
+
+    matrix[hosts,N] mnk=m .* n .* k;
+    matrix[hosts,N] mn=m .* n;
+    matrix[hosts,N] mk=m .* k;
+    matrix[hosts,N] nk=n .* k;
+}
+parameters {
+    //The raw parameters
+
+    matrix[hosts,5] alpha_raw;
+    matrix<lower=0>[hosts,5] beta_raw;
+
+    //The hyper raw parameters
+
+    vector[5] hyper_alpha_raw;
+    vector<lower=0>[5] hyper_beta_raw;
+
+    //The hyper parameters sigma
+
+    vector<lower=0>[5] sigma_alpha;
+    vector<lower=0>[5] sigma_beta;
+}
+transformed parameters {
+    //The real parameters
+
+    matrix[hosts,5] alpha;
+    matrix<lower=0>[hosts,5] beta;
+
+    //The hyper parameters mu
+
+    vector[5] mu_alpha;
+    vector<lower=0>[5] mu_beta;
+
+    //The priors for the hyper parameters mu
+    for(i in 1:5){
+      mu_alpha[i] = alpha_mean[i]+ hyper_alpha_raw[i] * alpha_sd[i];
+      mu_beta[i] = beta_mean[i]+ hyper_beta_raw[i] * beta_sd[i];
+    }
+
+    //The priors for the parameters
+
+    for(j in 1:5){
+      alpha[,j] = mu_alpha[j] + alpha_raw[,j] * sigma_alpha[j];
+      beta[,j] = mu_beta[j] + beta_raw[,j] * sigma_beta[j];
+    }
+}
+model {
+    //The priors for the raw parameters
+
+    for(i in 1:5){
+      alpha_raw[,i] ~ normal(0,1);
+      beta_raw[,i] ~ normal(0,1);
+    }
+
+    //The priors for the hyper raw parameters
+
+    hyper_alpha_raw ~ normal(0,1);
+    hyper_beta_raw ~ normal(0,1);
+
+    //The priors for the hyper parameters sigma
+
+    sigma_alpha ~ normal(0,1);
+    sigma_beta ~ normal(0,1);
+
+    //The likelihood
+
+    for(i in 1:hosts){
+      duration[i] ~ normal(alpha[i,1]*mnk[i]+alpha[i,2]*mn[i]+alpha[i,3]*mk[i]+alpha[i,4]*nk[i]+alpha[i,5], beta[i,1]*mnk[i]+beta[i,2]*mn[i]+beta[i,3]*mk[i]+beta[i,4]*nk[i]+beta[i,5]);
+    }
+}
+"
+sm = stan_model(model_code = modelString)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+t_i=list()
+for(i in 1:length(unique(tmp$cpu))){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("m","n","k","mnk","duration")),500)
+}
+m=lapply(t_i, '[[', 1)
+n=lapply(t_i, '[[', 2)
+k=lapply(t_i, '[[', 3)
+mnk=lapply(t_i, '[[', 4)
+duration=lapply(t_i, '[[', 5)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+dt = list(N=500,hosts=length(unique(tmp$cpu)),m=m,n=n,k=k,duration=duration,alpha_mean=c(1e-10,1e-10,1e-10,1e-10,1e-05),alpha_sd=c(2e-10,2e-10,2e-10,2e-10,2e-05),beta_mean=c(1e-12,1e-10,1e-10,1e-10,1e-05),beta_sd=c(2e-12,2e-10,2e-10,2e-10,2e-05))
+
+initfunction=function(){
+  list(mu_alpha=c(1e-10,1e-10,1e-10,1e-10,1e-05),mu_beta=c(1e-12,1e-10,1e-10,1e-10,1e-05),sigma_alpha=c(2e-10,2e-10,2e-10,2e-10,2e-05),sigma_beta=c(2e-12,2e-10,2e-10,2e-10,2e-05))
+}
+
+fit = sampling(sm,data=dt, iter=1000, chains=4, init=initfunction)
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+print(fit,digits=15,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference for Stan model: ac9099f72c84a648aa3652bcdc4b9fc5.
+4 chains, each with iter=1000; warmup=500; thin=1; 
+post-warmup draws per chain=500, total post-warmup draws=2000.
+
+                       mean      se_mean           sd          2.5%
+mu_alpha[1]    6.399900e-11 9.800000e-14 4.320000e-13  6.323300e-11
+mu_alpha[2]    4.635600e-11 1.232800e-11 2.063200e-11  8.116000e-12
+mu_alpha[3]    1.900626e-09 2.364000e-12 1.363500e-11  1.875141e-09
+mu_alpha[4]    3.175740e-09 8.098000e-12 1.938900e-11  3.141480e-09
+mu_alpha[5]    1.216699e-06 1.597517e-08 9.082791e-07 -5.355526e-07
+mu_beta[1]     1.000000e-12 0.000000e+00 0.000000e+00  1.000000e-12
+mu_beta[2]     1.001740e-10 4.000000e-15 1.810000e-13  1.000040e-10
+mu_beta[3]     1.000970e-10 2.000000e-15 9.600000e-14  1.000030e-10
+mu_beta[4]     1.003850e-10 1.080000e-13 4.420000e-13  1.000090e-10
+mu_beta[5]     1.006503e-05 1.139259e-09 6.746631e-08  1.000162e-05
+sigma_alpha[1] 4.149000e-12 3.600000e-14 3.660000e-13  3.492000e-12
+sigma_alpha[2] 7.042400e-11 4.271000e-12 1.263800e-11  4.843800e-11
+sigma_alpha[3] 8.848400e-11 3.438000e-12 1.278300e-11  6.531900e-11
+sigma_alpha[4] 9.991100e-11 1.795600e-11 2.863800e-11  5.664000e-11
+sigma_alpha[5] 7.083512e-07 1.060896e-08 5.462904e-07  2.661234e-08
+sigma_beta[1]  2.210000e-13 1.560000e-13 2.230000e-13  0.000000e+00
+sigma_beta[2]  1.124260e-10 7.956800e-11 1.147260e-10  8.000000e-15
+sigma_beta[3]  1.240000e-13 2.000000e-15 1.180000e-13  3.000000e-15
+sigma_beta[4]  1.461750e-10 1.029680e-10 1.476700e-10  2.600000e-14
+sigma_beta[5]  8.284179e-08 1.353849e-09 8.233648e-08  2.871308e-09
+                        25%          50%          75%        97.5% n_eff
+mu_alpha[1]    6.372100e-11 6.395900e-11 6.426400e-11 6.498500e-11    19
+mu_alpha[2]    2.957300e-11 4.749500e-11 6.385000e-11 7.986500e-11     3
+mu_alpha[3]    1.891688e-09 1.900205e-09 1.909794e-09 1.927355e-09    33
+mu_alpha[4]    3.161899e-09 3.174072e-09 3.189366e-09 3.215444e-09     6
+mu_alpha[5]    5.864098e-07 1.217930e-06 1.831522e-06 3.011433e-06  3233
+mu_beta[1]     1.000000e-12 1.000000e-12 1.000000e-12 1.000000e-12  3502
+mu_beta[2]     1.000460e-10 1.001180e-10 1.002330e-10 1.006770e-10  2122
+mu_beta[3]     1.000270e-10 1.000690e-10 1.001330e-10 1.003480e-10  3389
+mu_beta[4]     1.000980e-10 1.002280e-10 1.005170e-10 1.015940e-10    17
+mu_beta[5]     1.001739e-05 1.004323e-05 1.009039e-05 1.024924e-05  3507
+sigma_alpha[1] 3.897000e-12 4.128000e-12 4.383000e-12 4.932000e-12   102
+sigma_alpha[2] 6.138200e-11 6.949500e-11 7.825800e-11 9.743300e-11     9
+sigma_alpha[3] 7.968000e-11 8.816500e-11 9.655100e-11 1.149030e-10    14
+sigma_alpha[4] 7.432400e-11 9.825200e-11 1.234300e-10 1.517410e-10     3
+sigma_alpha[5] 2.797272e-07 5.823851e-07 1.023347e-06 2.005529e-06  2652
+sigma_beta[1]  0.000000e+00 1.600000e-13 4.390000e-13 5.250000e-13     2
+sigma_beta[2]  1.690000e-13 6.775400e-11 2.210850e-10 2.844130e-10     2
+sigma_beta[3]  3.700000e-14 9.000000e-14 1.750000e-13 4.430000e-13  3199
+sigma_beta[4]  4.910000e-13 9.926700e-11 2.896560e-10 3.533900e-10     2
+sigma_beta[5]  2.416273e-08 6.046881e-08 1.115713e-07 3.128638e-07  3699
+                    Rhat
+mu_alpha[1]    1.1678851
+mu_alpha[2]    1.8335199
+mu_alpha[3]    1.0755608
+mu_alpha[4]    1.2614621
+mu_alpha[5]    0.9989850
+mu_beta[1]     0.9995282
+mu_beta[2]     1.0084839
+mu_beta[3]     0.9987385
+mu_beta[4]     1.0790083
+mu_beta[5]     0.9986075
+sigma_alpha[1] 1.0512561
+sigma_alpha[2] 1.1555550
+sigma_alpha[3] 1.1024628
+sigma_alpha[4] 2.1593615
+sigma_alpha[5] 0.9991835
+sigma_beta[1]  7.3091157
+sigma_beta[2]  5.1150346
+sigma_beta[3]  1.0000102
+sigma_beta[4]  6.1637172
+sigma_beta[5]  0.9990828
+
+Samples were drawn using NUTS(diag_e) at Thu Jul 11 13:14:38 2019.
+For each parameter, n_eff is a crude measure of effective sample size,
+and Rhat is the potential scale reduction factor on split chains (at 
+convergence, Rhat=1).
+#+end_example
+
+The results are pretty similar to the previous ones. We also got the
+trace and the histograms.
+
+#+begin_src R :results output graphics :file ./images/traces_hierarchical_mh2.pdf :exports both :width 600 :height 400 :session *R* 
+stan_trace(fit,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/traces_hierarchical_mh2.pdf]]
+
+#+begin_src R :results output graphics :file ./images/hist_hierarchical_mh2.pdf :exports both :width 600 :height 400 :session *R* 
+stan_hist(fit,pars=c("mu_alpha","mu_beta","sigma_alpha","sigma_beta"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/hist_hierarchical_mh2.pdf]]
+
+The traces still don't converge on some parameters, but more worringly
+the histograms don't look at all like the previous ones, and display
+strange shapes.

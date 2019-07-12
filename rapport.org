@@ -18,13 +18,13 @@
     pour tout ça.
   - Contraintes envisagées: modèles "arbitrairement" complexes,
     hiérarchiques, bruit non gaussien, ...
-* Related Work: Bayesian Sampling (2p)
+* Related Work: Bayesian Sampling (3p)
 ** Principe des samplers bayésiens
 - avantage par rapport à une régression linéaire simple
 - utiliser des priors
 - vérifier les résultats: convergence des chaînes, histogramme paramètres
 ** Stan Écosystème
-* Méthodologie (1-2p)
+* Méthodologie (1p)
   - outils utilisés: orgmode, rstudio, stan, grid5000,...
   - cahier de laboratoire
 * Contributions
