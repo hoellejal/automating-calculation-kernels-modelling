@@ -58,7 +58,7 @@
 * Page de garde                                                      :ignore:
 #+BEGIN_EXPORT latex
 \thispagestyle{empty}
-\begin{frontmatter}
+\begin{titlepage}
   \includegraphics[height=1.4cm]{logos/Logo-UGA.pdf}
   \includegraphics[height=1.4cm]{logos/polytech.png}\hfill
   \includegraphics[height=1.4cm]{logos/LIG_coul.pdf}
@@ -68,14 +68,14 @@
 
   \begin{center}
     \null\vfill
-    \hline\medskip
+    \hrule\bigskip
 
     \LARGE
-    \textbf{Modélisation de performance de noyaux d'algèbre linéaire:
+    \textsf{\textbf{Modélisation de performance de noyaux d'algèbre linéaire:
       approche par maximisation de vraisemblance vs. échantillonnage
-      Bayésien}\medskip
+      Bayésien}}\medskip
 
-    \hline\vspace{1cm}
+    \hrule\vspace{1cm}
 
     \Large 
     \textit{Auteur: \hfill Encadrants:}
@@ -88,11 +88,18 @@
     \vfill
 
     \today
-
-    \vfill\null
-
   \end{center}
-\end{frontmatter}
+
+    \vfill
+
+   \Large Jury:
+   \begin{itemize}
+   \item Olivier Richard, Maître de Conférence UGA
+   \item ???
+   \item ???
+   \end{itemize}
+
+\end{titlepage}
 \clearpage~\thispagestyle{empty}\clearpage\pagenumbering{roman}\setcounter{page}{1}
 #+END_EXPORT
 * Remerciements
