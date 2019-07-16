@@ -93,8 +93,7 @@
 
   \end{center}
 \end{frontmatter}
-\pagenumbering{roman}
-\cleardoublepage
+\clearpage~\thispagestyle{empty}\clearpage\pagenumbering{roman}\setcounter{page}{1}
 #+END_EXPORT
 * Remerciements
 :PROPERTIES:
@@ -119,7 +118,7 @@
  Enfin, je remercie toutes les personnes qui m’ont relu lors de la
  rédaction de ce rapport de stage, notamment ma soeur Aélys Jalmin. 
 
-#+LaTeX: \cleardoublepage\tableofcontents\pagenumbering{arabic}\cleardoublepage
+#+LaTeX: \cleardoublepage\tableofcontents\cleardoublepage\pagenumbering{arabic}\setcounter{page}{1}
 * Introduction
 ** Environnement de travail
    Mon stage a été effectué dans le Laboratoire Informatique de
