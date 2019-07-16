@@ -1,0 +1,49 @@
+# -*- coding: utf-8 -*-
+# -*- mode: org -*-
+#+Title: Rapport de stage
+#+Author: Hoël Jalmin
+#+LANGUAGE: fr
+
+* Introduction (2p)
+- Introduction, plan
+ - Environnement de travail/Développement durable (partie obligatoire
+   du rapport)
+* Contexte (3p)
+  - Plates-formes parallèles complexes (cpus, réseau, applications MPI)
+  - Travaux de Tom: Modèles pour prédire la performance en simulation
+    - Type de mesures et de modèles.
+    - Limitations: modèles et solutions ad hoc pour estimations,
+      combinaison non triviale et génération de code ad hoc
+  - Objectif: Évaluer la possibilité d'avoir une solution plus générique
+    pour tout ça.
+  - Contraintes envisagées: modèles "arbitrairement" complexes,
+    hiérarchiques, bruit non gaussien, ...
+* Related Work: Bayesian Sampling (3p)
+** Principe des samplers bayésiens
+- avantage par rapport à une régression linéaire simple
+- utiliser des priors
+- vérifier les résultats: convergence des chaînes, histogramme paramètres
+** Stan Écosystème
+* Méthodologie (1p)
+  - outils utilisés: orgmode, rstudio, stan, grid5000,...
+  - cahier de laboratoire
+* Contributions
+** élaboration de modèles pour dgemm
+- modèles génériques, pouvant être utilisés pour d'autre noyaux de
+  calculs
+- complexité des modèles par couche:
+  - modèle linéaire/polynomial avec du bruit non gaussien
+  - modèles avec estimations par hôte
+  - modèles hiérarchiques
+  - mixture gaussienne pour un paramètre?
+** Rendre le fit le plus précis possible
+- techniques d'écriture des modèles: paramétrisation non centrée,
+  décomposition QR, ...
+- étude des priors (convergence, résultats, temps)
+- donner des valeurs initiales
+** évaluer les modèles
+- visualisation postérieur/ggpairs
+- générer de nouvelles données (pour le moment avec stan)
+* Conclusion et Future Work (2p)
+- Adapter modèles aux communications réseau
+- Détection de nouveauté
