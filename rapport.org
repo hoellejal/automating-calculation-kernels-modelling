@@ -87,16 +87,16 @@
 
     \vfill
 
-    \today
+    Août 2019
   \end{center}
 
     \vfill
 
-   \Large Jury:
+   \Large \textit{Jury:}
    \begin{itemize}
-   \item Olivier Richard, Maître de Conférence UGA
-   \item ???
-   \item ???
+   \item \textcolor{rouge}{Olivier \textsc{Richard}, Maître de Conférence UGA}
+   \item \textcolor{rouge}{??? \textsc{???}, ???}
+   \item \textcolor{rouge}{??? \textsc{???}, ???}
    \end{itemize}
 
 \end{titlepage}
