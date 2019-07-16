@@ -517,7 +517,7 @@
    étant l’inclusion de plus de paramètres. En effet, cette fois ci on
    considère l’influence des coefficients M*N, M*K et N*K dans la
    vitesse d’exécution. La likelihood est donc légèrement modifiée: 
-   $duration \sim N(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta)$ 
+   $duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta)$ 
 
    Par la suite, j’ai réécrit ces deux modèles en ajoutant une
    variable déterminante sur laquelle les estimations des paramètres
@@ -528,7 +528,7 @@
    que la likelihood devait donc être définie selon les hôtes. On
    avait donc la formule suivante pour le modèle linéaire: 
 
-   $duration_i \sim N (\alpha_i*mnk_i+\beta_i, \gamma_i*mnk_i+\delta_i)$
+   $duration_i \sim \Norm(\alpha_i*mnk_i+\beta_i, \gamma_i*mnk_i+\delta_i)$
 
    Et de même pour le modèle polynomial. Ces deux modèles permettent
    de simuler la performance de tous les noyaux de calculs utilisés
@@ -538,15 +538,15 @@
    indépendantes selon les CPUs utilisés, s’il n’y aurait pas une
    distribution de probabilité des valeurs moyennes des paramètres. On
    estimerait alors la formule suivante (et de même pour les autres
-   paramètres): $\alpha_i \sim N (\mu_\alpha , \sigma_a)$
+   paramètres): $\alpha_i \sim \Norm(\mu_\alpha , \sigma_a)$
 
    On chercherait alors à estimer principalement les valeurs des deux
    paramètres supplémentaires, qu’on appellera hyperparamètres, car
    une fois qu’on aura leur distribution de probabilité, on pourrait
    calculer des nouvelles valeurs \alpha, \beta, \gamma et \delta pour un nouveau CPU.
 
-   Dans ce modèle hiérarchique, on dira que $\mu_\alpha \sim N (\alpha_moy , \alpha_sd)$ où
-   \alpha_moy et \alpha_sd sont les priors et $\sigma_\alpha \sim N (0,1)$.
+   Dans ce modèle hiérarchique, on dira que $\mu_\alpha \sim \Norm(\alpha_moy , \alpha_sd)$ où
+   \alpha_moy et \alpha_sd sont les priors et $\sigma_\alpha \sim \Norm(0,1)$.
 
    Le modèle hiérarchique a donné des bonnes estimations pour le
    modèle linéaire, mais des estimations assez moyennes avec le modèle
