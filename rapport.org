@@ -129,13 +129,13 @@
    envergure, générant beaucoup de données. Le LIG Grenoble est
    présent au sein du bâtiment IMAG de Saint-Martin d'Hères, avec 5
    autres laboratoires: 
-    • l’Agence pour les Mathématiques en Interaction avec les
+    - l’Agence pour les Mathématiques en Interaction avec les
       Entreprises et la Société (AMIES) 
-    • Grenoble Alpes Recherche Infrastructure de CAlcul Intensif et de
+    - Grenoble Alpes Recherche Infrastructure de CAlcul Intensif et de
       Données (GRICAD)
-    • Laboratoire Jean Kuntzmann (LJK)
-    • MI2S
-    • VERIMAG
+    - Laboratoire Jean Kuntzmann (LJK)
+    - MI2S
+    - VERIMAG
 
     Grâce aux compétences diverses des chercheurs travaillant dans le
     bâtiment, l’IMAG permet de profiter d’un grand nombre de
@@ -223,18 +223,18 @@
    Ces contraintes ont poussé Tom à définir plusieurs types de
    modèles, selon les mesures. On définit M-x N-y comme un modèle de
    complexité x, avec un bruit de complexité y. Par exemple: 
-    • M-0 indique un modèle où la durée d’exécution est constante et
+    - M-0 indique un modèle où la durée d’exécution est constante et
       indépendante des paramètres du modèle. De même N-0 indique
       l’absence de bruit. 
-    • M-1 indique un modèle linéaire, où la durée dépend d’une
+    - M-1 indique un modèle linéaire, où la durée dépend d’une
       combinaison des paramètres donnés (souvent un paramètre
       dépendant de x et un paramètre constant). De même N-1 indique un
       bruit avec une distribution normale. 
-    • M-2 indique un modèle polynomial, et de même pour N-2.
-    • M_H et N_H sont des notations spécifiques répondant à la
+    - M-2 indique un modèle polynomial, et de même pour N-2.
+    - M_H et N_H sont des notations spécifiques répondant à la
       problématique de variabilité spatiale, et indiquant donc que les
       mesures doivent être effectuées par hôte. 
-    • M’ indique un modèle linéaire pour certaines valeurs
+    - M’ indique un modèle linéaire pour certaines valeurs
       spécifiques, et N’ un bruit dont la distribution serait une
       mixture de gaussiennes. 
 
@@ -353,12 +353,12 @@
    Markov Chain Monte Carlo (MCMC). Ce procédé suit une variante de
    l’algorithme de Metropolis-Hastings qui fonctionne de la manière
    suivante. A chaque itération: 
-    • On pars d’un point initial, représenté par le tirage précédent
-    • On propose d’aller sur un autre point, et on évalue si la
+    - On pars d’un point initial, représenté par le tirage précédent
+    - On propose d’aller sur un autre point, et on évalue si la
       distribution avec ce nouveau point explique mieux les données
       que l’ancienne distribution, donc si la probabilité d’obtenir
       nos données avec ces nouveau paramètre est plus élevée 
-    • Si oui on fait un tirage sur ce nouveau point
+    - Si oui on fait un tirage sur ce nouveau point
       
    Ce fonctionnement permet à la simulation de parcourir un espace de
    valeurs possibles assez rapidement. Le procédé a également une
