@@ -4,8 +4,102 @@
 #+TITLE:       Rapport de stage
 #+AUTHOR:      Hoël Jalmin
 #+LANGUAGE:    fr
+#+DRAWERS: latex_headers
 
+:latex_headers:
+#+LaTeX_CLASS: report
+#+LATEX_CLASS_OPTIONS: [twoside,11pt]
+#+OPTIONS:   H:2 num:t toc:nil \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t
+#+LATEX_HEADER: \usepackage[T1]{fontenc}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LATEX_HEADER: \usepackage[french]{babel}
+#+LATEX_HEADER: \usepackage{DejaVuSansMono}
+#+LATEX_HEADER: \usepackage{palatino}
+#+LATEX_HEADER: \usepackage{ifthen,amsmath,amstext,gensymb,amssymb}
+#+LATEX_HEADER: \usepackage{boxedminipage,xspace,multicol}
+#+LATEX_HEADER: \usepackage{verbments}
+#+LATEX_HEADER: \usepackage{xcolor}
+#+LATEX_HEADER: \usepackage{color}
+#+LATEX_HEADER: \usepackage{url} \urlstyle{sf}
+#+LATEX_HEADER: \usepackage[top=23mm,bottom=23mm,left=23mm,right=23mm,headsep=0pt]{geometry}
+#+LATEX_HEADER: \definecolor{violet}{rgb}{0.5,0,0.5}\definecolor{bleu}{rgb}{.18,.3,.68}
+#+LATEX_HEADER: \definecolor{rouge}{rgb}{.68,.3,.3}
+#+LATEX_HEADER: \usepackage{titlesec}
+#+LATEX_HEADER: \titleformat*{\section}{\color{rouge}\bf\Large}
+#+LATEX_HEADER: \titleformat*{\subsection}{\color{rouge}\bf\large}
+#+LATEX_HEADER: \titleformat*{\subsubsection}{\color{rouge}\bf}
+#+LATEX_HEADER: \titleformat{\paragraph}[runin]{\color{rouge}\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+#+LATEX_HEADER: \titleformat{\subparagraph}[runin]{\color{black}\normalfont\normalsize\bfseries}{\thesubparagraph}{0em}{}
+#+LATEX_HEADER: \titlespacing*{\subparagraph}{0pt}{1.25ex plus 1ex minus .2ex}{1em}
+#+LATEX_HEADER: \def\usetheme#1{} 
+#+LATEX_HEADER: \renewcommand\maketitle{}%\pagestyle{empty}\begin{titlepage}\input{title}\end{titlepage}\cleardoublepage\pagestyle{fancy}}
+
+#+BEGIN_EXPORT latex
+\newcommand{\Norm}{\ensuremath{\mathcal{N}}\xspace}
+\newcommand{\Unif}{\ensuremath{\mathcal{U}}\xspace}
+\newcommand{\Triang}{\ensuremath{\mathcal{T}}\xspace}
+\newcommand{\Exp}{\ensuremath{\mathcal{E}}\xspace}
+\newcommand{\Bernouilli}{\ensuremath{\mathcal{B}}\xspace}
+\newcommand{\Like}{\ensuremath{\mathcal{L}}\xspace}
+\newcommand{\Model}{\ensuremath{\mathcal{M}}\xspace}
+\newcommand{\E}{\ensuremath{\mathbb{E}}\xspace}
+\def\T{\ensuremath{\theta}\xspace}
+\def\Th{\ensuremath{\hat{\theta}}\xspace}
+\def\Tt{\ensuremath{\tilde{\theta}}\xspace}
+\def\Y{\ensuremath{y}\xspace}
+\def\Yh{\ensuremath{\hat{y}}\xspace}
+\def\Yt{\ensuremath{\tilde{y}}\xspace}
+\let\epsilon=\varepsilon
+\let\leq=\leqslant
+\let\geq=\geqslant
+#+END_EXPORT
+:end:
+
+* Page de garde                                                      :ignore:
+#+BEGIN_EXPORT latex
+\thispagestyle{empty}
+\begin{frontmatter}
+  \includegraphics[height=1.4cm]{logos/Logo-UGA.pdf}
+  \includegraphics[height=1.4cm]{logos/polytech.png}\hfill
+  \includegraphics[height=1.4cm]{logos/LIG_coul.pdf}
+%  \includegraphics[height=1.4cm]{logos/Logo-CNRS.pdf}
+%  \includegraphics[height=1.4cm]{logos/Logo-Inria.pdf}
+
+
+  \begin{center}
+    \null\vfill
+    \hline\medskip
+
+    \LARGE
+    \textbf{Modélisation de performance de noyaux d'algèbre linéaire:
+      approche par maximisation de vraisemblance vs. échantillonnage
+      Bayésien}\medskip
+
+    \hline\vspace{1cm}
+
+    \Large 
+    \textit{Auteur: \hfill Encadrants:}
+
+    {\color{rouge}Hoël \textsc{Jalmin} \hfill Arnaud
+      \textsc{Legrand}\\\hfill Tom \textsc{Cornebize}}
+
+    \bigskip
+
+    \vfill
+
+    \today
+
+    \vfill\null
+
+  \end{center}
+\end{frontmatter}
+\pagenumbering{roman}
+\cleardoublepage
+#+END_EXPORT
 * Remerciements
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
  Je tiens tout d’abord à remercier toute l’équipe du LIG pour son
  accueil, et sa sympathie, et particulièrement les équipes DATAMOVE et
  POLARIS avec qui j’étais le plus en contact, et pour m’avoir donné la
@@ -25,7 +119,7 @@
  Enfin, je remercie toutes les personnes qui m’ont relu lors de la
  rédaction de ce rapport de stage, notamment ma soeur Aélys Jalmin. 
 
-* Plan
+#+LaTeX: \cleardoublepage\tableofcontents\pagenumbering{arabic}\cleardoublepage
 * Introduction
 ** Environnement de travail
    Mon stage a été effectué dans le Laboratoire Informatique de
@@ -543,8 +637,25 @@
 * TODO Conclusion
 ** Sur Stan
 ** Bilan personnel
+#+LaTeX: \appendix
 * Annexes
   Le cahier de laboratoire, ainsi que les slides utilisées pour la
   pré-soutenance faite au laboratoire peuvent être trouvé à l’adresse
   suivante:
   https://github.com/hoellejal/automating-calculation-kernels-modelling
+* Emacs Setup 							   :noexport:
+This document has local variables in its postembule, which should
+allow Org-mode to work seamlessly without any setup. If you're
+uncomfortable using such variables, you can safely ignore them at
+startup. Exporting may require that you copy them in your .emacs.
+
+# Local Variables:
+# eval:    (require 'org-install)
+# eval:    (require 'ox-extra)
+# eval:    (ox-extras-activate '(ignore-headlines))
+# eval:    (unless (boundp 'org-latex-classes) (setq org-latex-classes nil))
+# eval:    (add-to-list 'org-latex-classes '("report" "\\documentclass{report} \n \[NO-DEFAULT-PACKAGES]\n \[EXTRA]\n  \\usepackage{graphicx}\n  \\usepackage{hyperref}" ("\\chapter{%s}" . "\\chapter*{%s}") ("\\section{%s}" . "\\section*{%s}") ("\\subsection{%s}" . "\\subsection*{%s}")                       ("\\subsubsection{%s}" . "\\subsubsection*{%s}")                       ("\\paragraph{%s}" . "\\paragraph*{%s}")                       ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+# eval:    (setq org-alphabetical-lists t)
+# eval:    (setq org-src-fontify-natively t)
+# eval:    (setq org-export-babel-evaluate nil)
+# End:
