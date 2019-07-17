@@ -7,6 +7,8 @@ all:
 	export PYTHONIOENCODING=utf-8
 	make modeling_computation_kernels.tex
 	make modeling_computation_kernels.pdf
+	make rapport.tex
+	make rapport.pdf
 #	make fix_figures
 #	make bayesian_statistics_introduction.pdf
 
