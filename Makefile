@@ -20,9 +20,11 @@ all:
 	rm $@.bak
 	sed -i -e 's/usepackage{graphicx}/usepackage{figlatex}/' -e 's/\\usepackage{grffile}//' $@
 
+rapport.tex: rapport.org
+	emacs -batch --eval "(setq enable-local-eval t)" --eval "(setq enable-local-variables t)" $<  --funcall org-latex-export-to-latex
 
 include LaTeX.mk
 
 clean::
-	$(RM) $(BIB_SLAVES) *.tex *.vrb
+	$(RM) $(BIB_SLAVES) *.tex *.vrb *.lot
 

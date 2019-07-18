@@ -1,3 +1,4 @@
+
 # -*- mode: org -*-
 # -*- coding: utf-8 -*-
 #+STARTUP: overview indent inlineimages logdrawer
@@ -83,11 +84,15 @@
     {\color{rouge}Hoël \textsc{Jalmin} \hfill Arnaud
       \textsc{Legrand}\\\hfill Tom \textsc{Cornebize}}
 
-    \bigskip
+\bigskip
 
-    \vfill
-
-    Août 2019
+  \vfill
+Tome Principal 
+ET 
+Annexe
+ \bigskip
+    
+   30/04/2019 - 19/07/2019
   \end{center}
 
     \vfill
@@ -95,8 +100,7 @@
    \Large \textit{Jury:}
    \begin{itemize}
    \item \textcolor{rouge}{Olivier \textsc{Richard}, Maître de Conférence UGA}
-   \item \textcolor{rouge}{??? \textsc{???}, ???}
-   \item \textcolor{rouge}{??? \textsc{???}, ???}
+   \item \textcolor{rouge}{Bernard \textsc{Tourancheau}, Professeur UGA}
    \end{itemize}
 
 \end{titlepage}
@@ -128,7 +132,7 @@
  Enfin, je remercie toutes les personnes qui m'ont relu lors de la
  rédaction de ce rapport de stage, notamment ma soeur Aélys Jalmin. 
 
- #+LaTeX: \cleardoublepage\tableofcontents\cleardoublepage\pagenumbering{arabic}\setcounter{page}{1}
+ #+LaTeX: \tableofcontents\listoffigures\pagenumbering{arabic}\setcounter{page}{1}
 * Introduction
 ** Environnement de travail
    Mon stage a été effectué dans le Laboratoire Informatique de
@@ -304,7 +308,7 @@
    préalables qu'on appellera prior. 
 
    Le théorème de Bayes est le suivant:
-   $p(A|B)=\frac{p(B|A)*p(A)}{p(B)}$
+   \begin{equation} p(A|B)=\frac{p(B|A)*p(A)}{p(B)}  \end{equation}
 
    Autrement dit, on cherche la probabilité de A sachant B, en
    fonction de notre connaissance de la probabilité de B sachant A et
@@ -313,7 +317,7 @@
    déjà et nos connaissances préalables qu'on appellera prior. 
 
    On peut aussi écrire le théorème de la façon suivante:
-   $p(A|B) \propto p(B|A)*p(A)$
+   \begin{equation} p(A|B) \propto p(B|A)*p(A)  \end{equation}
 
    Ceci indique que la distribution du postérieur (la probabilité de A
    sachant B) est proportionnelle à la combinaison de la fonction de
@@ -343,17 +347,12 @@
    simulation du sampler Stan qui a été utilisé dans la section
    suivante.
 
-   (L'approche Bayésienne a donc certains avantages par rapport à
-   l'approche fréquentiste. En effet, elle n'a pas pour but de trouver
-   la meilleure valeur pour le modèle mais de trouver une distribution
+   L'approche Bayésienne consiste donc à trouver une distribution
    correspondant aux paramètres en utilisant une méthode intuitive:
-   on pars de nos connaissances ou hypothèses préalables, puis en
-   fonction des données qu'on dispose on affine notre modèle. Cette
-   approche est donc très utile dans des situations où on veut pouvoir
-   renseigner des priors, car l'approche fréquentiste présume que
-   toutes les informations sont présentes dans les données fournies,
-   et lorsque l'on cherche à quantifier notre incertitude par rapport
-   aux résultats, ce qui correspond à notre cas.)
+   on pars de nos connaissances préalables, et en fonction des données
+   qu'on dispose on affine notre modèle. Cette approche est donc utile
+   dans des situations où on veut pouvoir renseigner des priors et
+   quantifier notre incertitude par rapport aux résultats.
 
    Il existe plusieurs samplers Bayésiens, mais ce domaine est encore
    assez récent car l'approche Bayésienne requiert une grande
@@ -369,16 +368,89 @@
       données avec ces nouveau paramètre est plus élevée.
     - Si oui on fait un tirage sur ce nouveau point
 
-[[./images/gibbs_sampling.png]]
-
-   (source de l'image: https://jessicastringham.net/2018/05/09/gibbs-sampling/)
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{./images/gibbs_sampling.png}
+\caption{source: https://jessicastringham.net/2018/05/09/gibbs-sampling/}
+\end{figure}
 
    On peut reconnaître cet algorithme dans l'image du milieu, où on
    comprend que la simulation a commencé à peu près au point (3,-3) et
    s'est ensuite rapprochée au fur et à mesure de la zone où il y
    avait les données.
  
-** TODO L'approche Machine Learning
+** L'approche Machine Learning
+L'approche machine learning suit un principe d'auto-apprentissage:
+contrairement à l'approche bayésienne qui fait correspondre les
+données à un modèle avec des hypothèses à vérifier pour trouver les
+paramètres, l'objectif du machine learning est de trouver un modèle
+approximant les paramètres à l'origine des données, à l'aide duquel on
+va pouvoir effectuer des prédictions. La notion d'apprentissage est
+équivalente à construire le modèle qui se rapprochera le plus des
+données.  
+
+L'algorithme de machine learning récupère des estimations produites
+par une machine, dont la performance dépend des données rencontrées,
+et plus il rencontre d'observations, plus il s'améliore et récupère
+des estimations précises. La démarche consiste donc à faire une
+expérience plusieurs fois, et à calculer la probabilité empirique des
+résultats à chaque fois. Plus le nombre de fois qu'on fait
+l'expérience est élevé, meilleurs seront les résultats. Cependant,
+comme on fait une approximation de la réalité, on a une perte
+d'information qui correspond à un bruit non modélisé indépendant des
+données. 
+
+On a trois algorithmes principaux: la descente de gradient,
+l'estimateur du maximum de vraisemblance et le clustering. La descente
+de gradient est un algorithme dont le but est de trouver le minimum
+d'une fonction dérivable et dont on connaît l'expression mais où le
+calcul du minimum est compliqué. Il suit une approche itérative qui à
+chaque pas calcule la pente de la fonction (sa dérivée) en fonction du
+point de départ et y avance plus ou moins selon la taille du pas
+d'apprentissage η; et ceci jusqu'à converger en un minimum.  
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=300px]{./images/descente_gradient.png}
+\caption{source: https://www.neural-networks.io/fr/single-layer/gradient-descent.php}
+\end{center}
+\end{figure}
+
+
+Attention à taille de η: plus il est grand plus on avance loin à
+chaque pas donc plus on réduit théoriquement les itérations, mais si η
+est trop grand on risque de manquer le minimum (surtout si le tracé de
+la fonction est un peu particulier) et d'avoir un comportement
+divergent. En revanche plus η est petit plus on avance lentement, mais
+avec plus de chances de converger au final. Il existe deux limites à
+cet algorithme: les minimums locaux et le «vanishing gradient». En
+effet selon la valeur de départ choisie l'algorithme peut partir sur
+une mauvaise pente et s'arrêter sur un minimum local, mais pas
+global. Il faut donc que la valeur de départ soit plus proche du
+minimum recherché que d'un minimum local pour trouver un bon
+résultat. Le «vanishing gradient» indique un tracé de fonction avec
+des valeurs «plateau» où l'algorithme se bloquerait, l'empêchant de
+trouver le minimum. 
+
+L'estimateur du maximum de vraisemblance est un algorithme permettant
+d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
+échantillon. L est la fonction de densité à paramètres θ correspondant
+à un échantillon de variables aléatoires discrètes. Soit:
+$L(θ)=p(x1...xN | θ)$ représentant la probabilité d'avoir les
+observations x1...xN étant donné les paramètres θ. Les estimateurs θ̂
+du maximum de vraisemblance des paramètres θ sont les valeurs
+maximisant L, soit minimisant la fonction de perte. L'objectif de
+l'algorithme est donc d'inférer les paramètres de la loi de
+probabilité d'un échantillon en trouvant les valeurs des paramètres θ
+permettant d'atteindre le maximum de la vraisemblance L.
+
+Enfin l'algorithme de clustering permet d'identifier et de former des
+petits groupes séparés partageant des caractéristiques communes parmi
+les données. On peut indiquer en amont les différents groupes, ou
+juste leur nombre et laisser l'algorithme les trouver, par exemple
+avec l'algorithme kmeans qui affecte les données aux clusters selon
+leur proximité (au sens de la somme des carrés) aux points médians des
+clusters. Les emplacements des points médians sont affinés selon que
+l'on ajoute des points au cluster.
 ** Le fonctionnement de Stan
    Stan utilise l'algorithme MCMC présenté précédemment, ce qui permet
    à la simulation de parcourir un espace de valeurs possibles assez
@@ -395,7 +467,10 @@
    d'échantillonnage, puisque les résultats des itérations de «warm
    up» ne donnent pas des résultats significatifs).
 
-[[./images/trace_rapport.png]]
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{./images/trace_rapport.png}
+\caption{trace du paramètre coefficient}
+\end{figure}
 
    En effet ici les 8 chaînes ont convergé autour de la même zone:
    environ la valeur 3,8.
@@ -450,8 +525,11 @@
    interface graphique très détaillée aux outils de diagnostics. On en
    voit une partie dans l'image ci dessous.
 
-   [[file:./images/shinystan.png]]
-
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{./images/shinystan.png}
+\caption{L'interface de shinystan, avec l'affichage du log postérieur et des trajectoires divergentes en rouge}
+\end{figure}
+   
    Enfin le plus important est de vérifier les valeurs trouvées pour
    les paramètres, et si elles ont du sens par rapport au modèle:
    vérifier l'histogramme des paramètres pour voir si les priors
@@ -544,13 +622,18 @@
    (M-2 N-2), puis j'ai ajouté de la complexité à ces modèles par
    couche.  
 
-   [[./images/modele_lineaire.png]]
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=400px]{./images/modele_lineaire.png}
+\caption{modèle linéaire, bruit polynomial}
+\end{center}
+\end{figure}
 
    Le modèle polynomial est très similaire, la principale différence
    étant l'inclusion de plus de paramètres. En effet, cette fois ci on
    considère l'influence des coefficients M*N, M*K et N*K dans la
    vitesse d'exécution. La likelihood est donc légèrement modifiée: 
-   $duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta)$ 
+   \begin{equation} duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta) \end{equation}
 
    Par la suite, j'ai réécrit ces deux modèles en ajoutant une
    variable déterminante sur laquelle les estimations des paramètres
@@ -561,7 +644,7 @@
    que la likelihood devait donc être définie selon les hôtes. On
    avait donc la formule suivante pour le modèle linéaire: 
 
-   $duration_i \sim \Norm(\alpha_i*mnk_i+\beta_i, \gamma_i*mnk_i+\delta_i)$
+   \begin{equation} duration_i \sim \Norm(\alpha_i*mnk_i+\beta_i, \gamma_i*mnk_i+\delta_i) \end{equation}
 
    Et de même pour le modèle polynomial. Ces deux modèles permettent
    de simuler la performance de tous les noyaux de calculs utilisés
@@ -571,7 +654,9 @@
    indépendantes selon les CPUs utilisés, s'il n'y aurait pas une
    distribution de probabilité des valeurs moyennes des paramètres. On
    estimerait alors la formule suivante (et de même pour les autres
-   paramètres): $\alpha_i \sim \Norm(\mu_\alpha , \sigma_a)$
+   paramètres): 
+   
+   \begin{equation} \alpha_i \sim \Norm(\mu_\alpha,\sigma_a) \end{equation}
 
    On chercherait alors à estimer principalement les valeurs des deux
    paramètres supplémentaires, qu'on appellera hyperparamètres, car
@@ -598,8 +683,8 @@
    gaussiennes. En effet, pour écrire une likelihood correspondant à
    une mixture de deux gaussiennes, la syntaxe est la suivante:
 
-   $target = target + log_mix(\theta, normal_lpdf(y_n | mu_1, sigma_1),
-   normal_lpdf(y_n | mu_2, sigma_2))$ 
+   \begin{equation} target = target + log_mix(\theta, normal_lpdf(y_n | mu_1, sigma_1),
+   normal_lpdf(y_n | mu_2, sigma_2)) \end{equation}
 
    Ici theta correspond à la proportion de données dans les courbes,
    et on exprime ensuite la présence de deux distributions normales,
@@ -641,21 +726,25 @@
    modèles autant que possible, en écrivant les priors sous forme
    vectorielle et en évitant les boucles, pour limiter le temps
    d'exécution. Il y a également des techniques d'écriture, comme la
-   décomposition QR de matrices, telle que la matrice réelle A=Q*R
+   décomposition QR de matrices, telle que la matrice réelle $A=Q*R$
    avec Q une matrice orthogonale et R une matrice triangulaire
    supérieure. Cette décomposition permet de réduire la corrélation
    entre les paramètres utilisés pour calculer le postérieur et réduit
    le temps de simulation sans impacter négativement les résultats.
 
    De plus, dès que l'on utilise des données de taille très petite (de
-   l'ordre de 10-5 à 10-12), il faut écrire les modèles sous la forme
+   l'ordre de 10^-5 à 10^-12), il faut écrire les modèles sous la forme
    de paramétrisation non centrée, car nos données ne sont pas assez
    informatives. Cette forme se caractérise par l'introduction de
    nouveaux paramètres, qui correspondent à des variables gaussiennes
    centrées en zéro. Ces variables permettent au sampler de trouver
    plus facilement les autres paramètres.
 
-   [[./images/parametrisation_non_centree.png]]
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{./images/parametrisation_non_centree.png}
+\caption{modèle linéaire avec paramétrisation non centrée}
+\end{figure}
 
    Ensuite, une autre façon d'offrir des indications à Stan est de lui
    donner des priors précis. En effet, les priors permettent
@@ -672,8 +761,8 @@
 
    Cependant un compromis existe entre priors trop peu informatifs et
    trop informatifs, à savoir qu'un prior peu informatif serait par
-   exemple normal(0,1) si la distribution du paramètre est
-   normal(7.49e-07,6.69e-08). Tout d'abord il faut considérer que les
+   exemple $a \sim \Norm(0,1)$ si la distribution du paramètre a est
+   $a \sim \Norm(7.49e-07,6.69e-08)$. Tout d'abord il faut considérer que les
    priors sont des connaissances ou hypothèses préalables, il n'est
    donc pas raisonnable de penser qu'elles puissent être extrêmement
    précises, et de plus il faut éviter de donner des priors
@@ -726,15 +815,23 @@ distribution par rapport aux autres paramètres, sous forme de nuage de
 points ou de densité. Cela nous permet d'observer d'éventuelles
 corrélations entre les paramètres qui pourraient poser problème au
 niveau de la simulation, et qui nous donnerait des indications qu'il
-faudrait réécrire notre modèle. On peut également dessiner les
-graphiques nous mêmes, à partir des distributions des paramètres
-trouvées par stan.
+faudrait réécrire notre modèle. 
 
-Par exemple dans l'image ci dessous, nous avons dessiné la
-distribution d'alpha selon gamma, et ce pour chacun de nos 64 hôtes,
-avec une grande ellipse contenant 95% des distributions. 
+\begin{figure}[!h]
+\includegraphics[width=\textwidth]{./images/ggpairs_mh1.png}
+\caption{Ggpairs avec modèle linéaire}
+\end{figure}
 
-[[file:./images/mu_on_sigma_5000_sample_init_values.png]]
+On peut également dessiner les graphiques nous mêmes, à partir des
+distributions des paramètres trouvées par stan. Par exemple dans
+l'image ci dessous, nous avons dessiné la distribution d'alpha selon
+gamma, et ce pour chacun de nos 64 hôtes, avec une grande ellipse
+contenant 95% des distributions. 
+
+\begin{figure}[!h]
+\includegraphics[width=\textwidth]{./images/alpha_on_theta_ellipse.png}
+\caption{distribution du paramètre alpha selon theta}
+\end{figure}
 
 Enfin le meilleur moyen de vérifier la précision du modèle après tous
 ces tests est de générer de nouvelles données à partir des prédictions
@@ -745,7 +842,10 @@ la génération de nouvelles données à partir des paramètres estimés,
 mais on peut également le faire directement en R. L'image ci dessous
 montre une génération de données confirmant la précision du modèle.
 
-[[file:./images/generated_quantities_dgemm_m-2_second_test.png]]
+\begin{figure}[!h]
+\includegraphics[width=\textwidth]{./images/generated_quantities_dgemm_m-2_second_test.png}
+\caption{Génération de nouvelles données, modèle polynomial}
+\end{figure}
 
 * Conclusion
 ** Sur Stan
@@ -816,6 +916,21 @@ de la recherche comme potentielle poursuite professionnelle.
   pré-soutenance faite au laboratoire peuvent être trouvé à l'adresse
   suivante:
   https://github.com/hoellejal/automating-calculation-kernels-modelling
+
+** Bibliographie
+- [[https://hal.inria.fr/hal-02096571/document ][Fast and Faithful Performance Prediction of MPI Applications: the HPL Case Study]]. Tom Cornebize, Arnaud Legrand, Franz Heinrich.
+- A Bayesian Course with examples in R and Stan. Richard McElreath.
+- Bayesian Data Analysis, Third Edition. Aki Vehtari, Andrew Gelman, David B. Dunson, Donald Rubin, Hal S. Stern et John B. Carlin.
+- [[https://www.fun-mooc.fr/courses/course-v1:inria+41016+session02/info ][Le MOOC sur la recherche reproductible]]
+- [[https://www.youtube.com/watch?v=BWEtS3HuU5A&list=PLDcUM9US4XdM9_N6XUUFrhghGJ4K25bFc&index=10 ][Cours de Richard McElreath sur les statistiques bayésiennes]]
+- [[https://discourse.mc-stan.org/ ][Forum d'aide de stan]]
+- https://mc-stan.org/users/documentation/case-studies/qr_regression.html
+- https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
+- https://www.martinmodrak.cz/2018/02/19/taming-divergences-in-stan-models/
+- https://www.grid5000.fr/w/Grid5000:Home
+- http://modernstatisticalworkflow.blogspot.com/2017/04/an-easy-way-to-simulate-fake-data-from.html
+- https://jessicastringham.net/2018/05/09/gibbs-sampling/
+
 * Emacs Setup 							   :noexport:
 This document has local variables in its postembule, which should
 allow Org-mode to work seamlessly without any setup. If you're
