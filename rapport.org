@@ -62,6 +62,7 @@
 \thispagestyle{empty}
 \begin{titlepage}
   \includegraphics[height=1.4cm]{logos/Logo-UGA.pdf}
+\hfill
   \includegraphics[height=1.4cm]{logos/polytech.png}\hfill
   \includegraphics[height=1.4cm]{logos/LIG_coul.pdf}
 %  \includegraphics[height=1.4cm]{logos/Logo-CNRS.pdf}
@@ -105,7 +106,7 @@ Annexe
    \end{itemize}
 
 \end{titlepage}
-\clearpage~\thispagestyle{empty}\clearpage\pagenumbering{roman}\setcounter{page}{1}
+\thispagestyle{empty}\pagenumbering{arabic}\setcounter{page}{1}
 #+END_EXPORT
 * Remerciements
 :PROPERTIES:
@@ -133,7 +134,7 @@ Annexe
  Enfin, je remercie toutes les personnes qui m'ont relu lors de la
  rédaction de ce rapport de stage, notamment ma soeur Aélys Jalmin. 
 
- #+LaTeX: \tableofcontents\listoffigures\pagenumbering{arabic}\setcounter{page}{1}
+ #+LaTeX: \tableofcontents\listoffigures
 * Introduction
 ** Environnement de travail
    Mon stage a été effectué dans le Laboratoire Informatique de
@@ -894,7 +895,6 @@ dans une longue liste de données et les distinguer de la simple
 variabilité du modèle.
 
 ** Bilan personnel
-#+LaTeX: \appendix
 Ce stage a été pour moi une expérience extrêmement enrichissante dans
 un milieu qui ne m'était pas du tout familier jusqu'ici. Non seulement
 il m'a donné l'occasion de découvrir le secteur de la recherche, et
@@ -930,7 +930,53 @@ de la recherche comme potentielle poursuite professionnelle.
 - https://www.martinmodrak.cz/2018/02/19/taming-divergences-in-stan-models/
 - https://www.grid5000.fr/w/Grid5000:Home
 - http://modernstatisticalworkflow.blogspot.com/2017/04/an-easy-way-to-simulate-fake-data-from.html
-- https://jessicastringham.net/2018/05/09/gibbs-sampling/
+- https://www.statmethods.net/advstats/cluster.html
+
+* Dernière page :ignore:
+#+BEGIN_EXPORT latex
+\thispagestyle{empty}
+\begin{titlepage}
+  \includegraphics[height=1.4cm]{logos/Logo-UGA.pdf}\hfill
+  \includegraphics[height=1.4cm]{logos/polytech.png}\hfill
+  \includegraphics[height=1.4cm]{logos/LIG_coul.pdf}
+
+
+  \begin{center}
+   Etudiant : \textcolor{rouge}{Hoël \textsc{Jalmin}} \hfill Année d'étude dans la spécialité : 4
+\vspace{3mm}  
+ \hrule
+\vspace{3mm}  
+   Entreprise : \textcolor{rouge}{Laboratoire Informatique de Grenoble}
+\vspace{3mm}     
+\hrule
+\vspace{3mm}  
+   Adresse complète : \textcolor{rouge}{700 avenue Centrale, 38400 Saint-Martin-d’Hères}
+\vspace{3mm}     
+\hrule
+\vspace{3mm}  
+   Responsable administratif : \textcolor{rouge}{Annie  \textsc{SIMON}} \\ 
+Courriel : \textcolor{rouge}{annie.simon@inria.fr}
+\vspace{3mm}  
+\hrule
+\vspace{3mm}     
+Tuteur de stage : \textcolor{rouge}{Arnaud \textsc{LEGRAND}} \\
+Courriel : \textcolor{rouge}{arnaud.legrand@imag.fr}
+\vspace{3mm}  
+\hrule
+\vspace{3mm}  
+Enseignant-référent : \textcolor{rouge}{Olivier \textsc{RICHARD}} \\
+Courriel: \textcolor{rouge}{olivier.richard@inria.fr}
+
+ \vfill
+    \Large
+   \textcolor{rouge}{ \textsf{\textbf{Modélisation de performance de noyaux d'algèbre linéaire:
+      approche par maximisation de vraisemblance vs. échantillonnage
+      Bayésien}}}\medskip
+  \end{center}
+ \vfill
+Résumé: 
+\end{titlepage}
+#+END_EXPORT
 
 * Emacs Setup 							   :noexport:
 This document has local variables in its postembule, which should

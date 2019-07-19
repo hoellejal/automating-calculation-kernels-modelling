@@ -11726,8 +11726,6 @@ sd_theta=sd(parameters[2,])
 sd_alpha=sd(parameters[1,])
 #+end_src
 
-#+RESULTS:
-
 #+begin_src R :results output :session *R* :exports both
 library(ggplot2)
 frame=data.frame(alpha=parameters[1,],theta=parameters[2,])
@@ -11762,32 +11760,60 @@ This plot should be interpreted this way: we want to take an x value
 that has a corresponding y value that isn't part of the "plateau" of
 the graph. Indeed this is a scree plot, and it indicates we should
 have a number of clusters that keeps the data before the part where it
-flatlines: which means 1 to 2 clusters is ideal. 1 cluster is
-equivalent to no clustering.
+flatlines: which means 1 to 2 clusters is ideal. We'll try with 2 and 3
+clusters, since 1 is equivalent to no clustering.
 
 Now we'll try to get two and three clusters of our values.
 
 #+begin_src R :results output :session *R* :exports both
+means = kmeans(frame,2)
+means2 = kmeans(frame,3)
+means$cluster = as.factor(means$cluster)
+means2$cluster = as.factor(means2$cluster)
 means
+means2
 #+end_src
 
 #+RESULTS:
 #+begin_example
-K-means clustering with 2 clusters of sizes 56, 8
+
+K-means clustering with 2 clusters of sizes 7, 57
 
 Cluster means:
          alpha        theta
-1 6.705254e-11 2.073341e-13
-2 7.790064e-11 2.874012e-13
+1 7.882450e-11 2.468938e-13
+2 6.720813e-11 2.159476e-13
 
 Clustering vector:
- [1] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 1 1 1 1 1 1
-[39] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ [1] 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 1 1 1 1 1 1 2 2 2 2 2 2
+[39] 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
 Levels: 1 2
 
 Within cluster sum of squares by cluster:
-[1] 6.800437e-23 1.640503e-22
- (between_SS / total_SS =  78.0 %)
+[1] 1.487778e-22 9.631780e-23
+ (between_SS / total_SS =  77.4 %)
+
+Available components:
+
+[1] "cluster"      "centers"      "totss"        "withinss"     "tot.withinss"
+[6] "betweenss"    "size"         "iter"         "ifault"
+
+K-means clustering with 3 clusters of sizes 7, 3, 54
+
+Cluster means:
+         alpha        theta
+1 7.376203e-11 2.463301e-13
+2 8.354937e-11 2.687289e-13
+3 6.695653e-11 2.130884e-13
+
+Clustering vector:
+ [1] 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 2 1 1 1 2 2 1 1 1 3 3 3 3 3
+[39] 3 3 3 3 3 3 3 3 3 3 1 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+Levels: 1 2 3
+
+Within cluster sum of squares by cluster:
+[1] 2.621638e-23 2.810565e-23 3.014345e-23
+ (between_SS / total_SS =  92.2 %)
 
 Available components:
 
@@ -11796,10 +11822,6 @@ Available components:
 #+end_example
 
 #+begin_src R :results output graphics :file ./images/alpha_on_theta_clustered_2.png :exports both :width 600 :height 400 :session *R* 
-means = kmeans(frame,2)
-means2 = kmeans(frame,3)
-means$cluster = as.factor(means$cluster)
-means2$cluster = as.factor(means2$cluster)
 ggplot(frame, aes(theta,alpha, color = means$cluster)) + geom_point()+stat_ellipse()
 #+end_src
 
@@ -11813,32 +11835,32 @@ ggplot(frame, aes(theta,alpha, color = means2$cluster)) + geom_point()+stat_elli
 #+RESULTS:
 [[file:./images/alpha_on_theta_clustered_3.png]]
 
+There are only two ellipses because the third one cannot be drawn with
+so little points.
+
 #+begin_src R :results output :session *R* :exports both
 mean_alpha=c(means$centers[,1])
 mean_alpha2=c(means2$centers[,1])
-mean_theta=c(means$centers[,2])
-mean_theta2=c(means2$centers[,2])
-sd_alpha=sd(parameters[1,])
 delta=table(means$cluster)/64
 delta2=table(means2$cluster)/64
 delta=c(delta[[1]],delta[[2]])
 delta2=c(delta2[[1]],delta2[[2]],delta2[[3]])
 da=data.frame(mu_alpha=mean_alpha,sd_alpha=sd_alpha,mu_theta=mean_theta,sd_theta=sd_theta,delta=delta)
-da2=data.frame(mu_alpha=mean_alpha2,sd_alpha=rep(sd_alpha,3),mu_theta=mean_theta2,sd_theta=rep(sd_theta,3),delta=delta2)
+da2=data.frame(mu_alpha=mean_alpha2,sd_alpha=sd_alpha,mu_theta=mean_theta,sd_theta=sd_theta,delta=delta2)
 da
 da2
 #+end_src
 
 #+RESULTS:
 : 
-:       mu_alpha     sd_alpha     mu_theta     sd_theta delta
-: 1 6.705254e-11 4.093588e-12 2.073341e-13 4.861048e-14 0.875
-: 2 7.790064e-11 4.093588e-12 2.874012e-13 4.861048e-14 0.125
+:       mu_alpha     sd_alpha     mu_theta     sd_theta    delta
+: 1 7.882450e-11 4.152314e-12 2.193324e-13 4.728871e-14 0.109375
+: 2 6.720813e-11 4.152314e-12 2.193324e-13 4.728871e-14 0.890625
 : 
 :       mu_alpha     sd_alpha     mu_theta     sd_theta    delta
-: 1 7.372851e-11 4.093588e-12 2.823902e-13 4.861048e-14 0.109375
-: 2 6.690206e-11 4.093588e-12 2.056027e-13 4.861048e-14 0.843750
-: 3 8.311217e-11 4.093588e-12 2.768817e-13 4.861048e-14 0.046875
+: 1 7.376203e-11 4.152314e-12 2.193324e-13 4.728871e-14 0.109375
+: 2 8.354937e-11 4.152314e-12 2.193324e-13 4.728871e-14 0.046875
+: 3 6.695653e-11 4.152314e-12 2.193324e-13 4.728871e-14 0.843750
 
 Compared to our previous results:
 
@@ -12038,3 +12060,81 @@ precise enough. Besides we have a lot of divergent transitions and the
 execution time quadrupled just by giving a slightly higher
 variability. This model isn't adapted to our data.
 
+*** 2019-07-19 friday
+**** Tried clustering with Mclust
+#+begin_src R :results output :session *R* :exports both
+library(dplyr)
+library(mclust)
+data=read.csv(file="~/dgemm.csv", header=TRUE, sep=",")
+data=data.frame(as.numeric(data$m),as.numeric(data$n),as.numeric(data$k),data$duration,data$cpu)
+names(data)=c("m","n","k","duration","cpu")
+data$mnk=data$m * data$n * data$k
+tmp=select(filter(data, (data$m)*(data$n)*(data$k) < 2e10),everything())
+t_i=list()
+coefficients=list()
+for(i in 1:64){
+  t_i[[i]]=sample_n(select(filter(tmp, tmp$cpu==i+1), c("mnk","duration")),500)
+  coefficients[[i]]=summary(lm(duration ~ mnk+0, data=t_i[[i]]))$coefficients[1:2]
+  names(coefficients[[i]])=c("alpha","theta")
+}
+parameters=sapply(coefficients,unlist)
+frame=data.frame(theta=parameters[2,],alpha=parameters[1,])
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both
+fit <- Mclust(as.matrix(frame),verbose=F)
+summary(fit)
+frame$cluster = as.factor(fit$classification)
+cluster = as.data.frame(t(fit$parameters$mean))
+cluster$id = 1:nrow(cluster)
+
+frame_clustered = frame %>% group_by(theta,alpha,cluster) %>% summarize(count=n())
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+---------------------------------------------------- 
+Gaussian finite mixture model fitted by EM algorithm 
+---------------------------------------------------- 
+
+Mclust XXX (ellipsoidal multivariate normal) model with 1 component: 
+
+ log-likelihood  n df      BIC      ICL
+       3469.757 64  5 6918.719 6918.719
+
+Clustering table:
+ 1 
+64
+#+end_example
+
+#+begin_src R :results output graphics :file ./images/bic_mclust.png :exports both :width 600 :height 400 :session *R* 
+plot(fit,what = c("BIC"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/bic_mclust.png]]
+
+Surprisingly, despite the absence of any error message mclust doesn't
+seem to fit properly our data, and so this graph stops after the
+estimations for one cluster, even though we've established before it's
+possible to have at least two clusters for this data.
+
+#+begin_src R :results output graphics :file ./images/classification_mclust.png :exports both :width 600 :height 400 :session *R* 
+plot(fit,what = c("classification"))
+#+end_src
+
+#+RESULTS:
+[[file:./images/classification_mclust.png]]
+
+#+begin_src R :results output graphics :file ./images/cluster_ellipse_mclust.png :exports both :width 600 :height 400 :session *R* 
+ggplot()+ geom_point(data=frame_clustered, aes(x=theta, y=alpha,color=cluster)) +
+    stat_ellipse(data=frame,aes(x=theta, y=alpha, fill=cluster, group=cluster),
+                 type = "norm",geom = "polygon", alpha = .3)
+#+end_src
+
+#+RESULTS:
+[[file:./images/cluster_ellipse_mclust.png]]
+
+As a result of mclust being unable to make calculations for more than
+one cluster, our data appears like this.
