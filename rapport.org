@@ -1,4 +1,5 @@
 
+
 # -*- mode: org -*-
 # -*- coding: utf-8 -*-
 #+STARTUP: overview indent inlineimages logdrawer
@@ -155,10 +156,10 @@ Annexe
     bâtiment, l'IMAG permet de profiter d'un grand nombre de
     séminaires et de conférences sur des sujets très variés. 
 ** Développement durable
-   Le bâtiment IMAG est considéré comme un bâtiment «intelligent» au
+   Le bâtiment IMAG est considéré comme un bâtiment "intelligent" au
    vu de sa faible consommation d'énergie. En effet, le bâtiment
    régule sa température grâce à l'ensoleillement: les bureaux sont
-   pourvus d'un grand nombre de fenêtre, ce qui augmente la chaleur en
+   pourvus d'un grand nombre de fenêtres, ce qui augmente la chaleur en
    hiver, et de volets avec capteurs de lumières se fermant quand le
    soleil les illumine, pour préserver la fraîcheur en été. De plus,
    le bâtiment possède des pompes à chaleur s'adaptant à la
@@ -199,19 +200,19 @@ Annexe
    des problématiques de consommation d'électricité et de
    thermorégulation. Pour répondre à ces problématiques, les
    fabricants de processeurs ont commencé à augmenter le nombre de
-   cœurs par processeur. Ainsi, les superordinateurs contiennent des
+   c\oe{}urs par processeur. Ainsi, les superordinateurs contiennent des
    centaines de noeuds, chacun contenant plusieurs processeurs
-   multi-cœurs; avec certains de ces processeurs possédant plusieurs
-   niveau de cache, ou mettant en œuvre du multi-threading… Ces
+   multi-c\oe{}urs; avec certains de ces processeurs possédant plusieurs
+   niveau de cache, ou mettant en \oe{}uvre du multi-threading… Ces
    architectures permettent une grande performance de calcul, mais
    créent une grande variabilité au niveau des calculs et une
    incertitude sur la prédiction et de l'évaluation de performance. Il
-   devient difficile d'estimer les performances «anormales», et d'en
+   devient difficile d'estimer les performances "anormales", et d'en
    tirer des conclusions. 
 
    En outre, cette complexité d'architecture pousse les applications
    parallèles à utiliser des technologies comme MPI (Message Passing
-   Interface) pour communiquer entre les différents cœurs d'un
+   Interface) pour communiquer entre les différents c\oe{}urs d'un
    processeur, point à point ou de manière collective, afin que chaque
    processus puisse effectuer une partie d'un grand calcul. MPI a donc
    aidé aux développement de superordinateurs de plus en plus
@@ -228,7 +229,7 @@ Annexe
    Les mesures récupérées pour ces expériences sont assez
    expérimentales, et peuvent être biaisées en fonction de la
    température interne des machines, de divers effets de cache, de la
-   rapidité d'un cœur par rapport à un autre, etc. De plus, les
+   rapidité d'un c\oe{}ur par rapport à un autre, etc. De plus, les
    systèmes analysés ne sont pas toujours ergodiques ou
    stationnaires; c'est à dire qu'une collection d'échantillons
    aléatoires du système ne représentent pas forcément ses propriétés
@@ -266,7 +267,7 @@ Annexe
    choisis l'ont été en connaissance de cause, après avoir déjà
    remarqué les spécificités des différents noyaux de calcul à
    simuler: par exemple dgemm est plus long à s'exécuter sur certains
-   nœuds, et possède des valeurs pour la taille des matrices pour
+   n\oe{}uds, et possède des valeurs pour la taille des matrices pour
    lesquelles la durée est systématiquement plus longue que pour
    d'autres, ce qui indique un comportement non linéaire. De même pour
    les communications réseaux discontinues. Il a également du générer
@@ -406,7 +407,7 @@ d'une fonction dérivable et dont on connaît l'expression mais où le
 calcul du minimum est compliqué. Il suit une approche itérative qui à
 chaque pas calcule la pente de la fonction (sa dérivée) en fonction du
 point de départ et y avance plus ou moins selon la taille du pas
-d'apprentissage η; et ceci jusqu'à converger en un minimum.  
+d'apprentissage \eta; et ceci jusqu'à converger en un minimum.  
 
 \begin{figure}[h]
 \begin{center}
@@ -416,31 +417,31 @@ d'apprentissage η; et ceci jusqu'à converger en un minimum.
 \end{figure}
 
 
-Attention à taille de η: plus il est grand plus on avance loin à
-chaque pas donc plus on réduit théoriquement les itérations, mais si η
+Attention à taille de \eta: plus il est grand plus on avance loin à
+chaque pas donc plus on réduit théoriquement les itérations, mais si \eta
 est trop grand on risque de manquer le minimum (surtout si le tracé de
 la fonction est un peu particulier) et d'avoir un comportement
-divergent. En revanche plus η est petit plus on avance lentement, mais
+divergent. En revanche plus \eta est petit plus on avance lentement, mais
 avec plus de chances de converger au final. Il existe deux limites à
-cet algorithme: les minimums locaux et le «vanishing gradient». En
+cet algorithme: les minimums locaux et le "vanishing gradient". En
 effet selon la valeur de départ choisie l'algorithme peut partir sur
 une mauvaise pente et s'arrêter sur un minimum local, mais pas
 global. Il faut donc que la valeur de départ soit plus proche du
 minimum recherché que d'un minimum local pour trouver un bon
-résultat. Le «vanishing gradient» indique un tracé de fonction avec
-des valeurs «plateau» où l'algorithme se bloquerait, l'empêchant de
+résultat. Le "vanishing gradient" indique un tracé de fonction avec
+des valeurs "plateau" où l'algorithme se bloquerait, l'empêchant de
 trouver le minimum. 
 
 L'estimateur du maximum de vraisemblance est un algorithme permettant
 d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
-échantillon. L est la fonction de densité à paramètres θ correspondant
+échantillon. L est la fonction de densité à paramètres \theta correspondant
 à un échantillon de variables aléatoires discrètes. Soit:
-$L(θ)=p(x1...xN | θ)$ représentant la probabilité d'avoir les
-observations x1...xN étant donné les paramètres θ. Les estimateurs θ̂
-du maximum de vraisemblance des paramètres θ sont les valeurs
+$L(\theta)=p(x1...xN | \theta)$ représentant la probabilité d'avoir les
+observations x1...xN étant donné les paramètres \theta. Les estimateurs
+$\widehat{\theta}$ du maximum de vraisemblance des paramètres \theta sont les valeurs
 maximisant L, soit minimisant la fonction de perte. L'objectif de
 l'algorithme est donc d'inférer les paramètres de la loi de
-probabilité d'un échantillon en trouvant les valeurs des paramètres θ
+probabilité d'un échantillon en trouvant les valeurs des paramètres \theta
 permettant d'atteindre le maximum de la vraisemblance L.
 
 Enfin l'algorithme de clustering permet d'identifier et de former des
@@ -454,7 +455,7 @@ l'on ajoute des points au cluster.
 ** Le fonctionnement de Stan
    Stan utilise l'algorithme MCMC présenté précédemment, ce qui permet
    à la simulation de parcourir un espace de valeurs possibles assez
-   rapidement. Le procédé a également une période de «warm up», où
+   rapidement. Le procédé a également une période de "warm up", où
    les tirages partent d'un point initial et peuvent donc être très
    éloignés des valeurs réelles et des autres tirages. Une fois le
    warm up terminé, le procédé a déterminé une zone réduite pour faire
@@ -464,8 +465,8 @@ l'on ajoute des points au cluster.
    effet puisque les chaînes ne commencent pas au même point initial,
    on peut avoir une certaine confiance en notre résultat si on
    s'aperçoit qu'elles convergent (pour les itérations
-   d'échantillonnage, puisque les résultats des itérations de «warm
-   up» ne donnent pas des résultats significatifs).
+   d'échantillonnage, puisque les résultats des itérations de "warm
+   up" ne donnent pas des résultats significatifs).
 
 \begin{figure}[h]
 \includegraphics[width=\textwidth]{./images/trace_rapport.png}
@@ -478,18 +479,18 @@ l'on ajoute des points au cluster.
    Stan a une syntaxe sous forme de sections, ou bloc. Chacun des
    blocs a un but précis, et toute variable déclarée dans un bloc est
    accessible aux prochains, mais pas forcément aux précédents. Le
-   bloc «data» permet de déclarer les données que l'on va fournir au
+   bloc "data" permet de déclarer les données que l'on va fournir au
    sampler. On peut donner des limites à ces données, comme préciser
    que certaines sont forcément positives, que d'autres sont sous
    forme de vecteur ordonné par valeur croissante, etc. Le bloc
-   «transformed data» permet de créer de nouvelles données, souvent
-   à partir des données initiales. Le bloc «parameters» indique les
+   "transformed data" permet de créer de nouvelles données, souvent
+   à partir des données initiales. Le bloc "parameters" indique les
    paramètres à estimer par le modèle. On peut seulement y déclarer
    des variables, et celles ci ne peuvent pas être des entiers. Le
-   bloc «transformed parameters» permet de déclarer et assigner des
-   valeurs à d'autres paramètres. Enfin le bloc «model» permet
-   d'indiquer les priors et la likelihood, et le bloc «generated
-   quantities» permet de créer de nouvelles données, de faire des
+   bloc "transformed parameters" permet de déclarer et assigner des
+   valeurs à d'autres paramètres. Enfin le bloc "model" permet
+   d'indiquer les priors et la likelihood, et le bloc "generated
+   quantities" permet de créer de nouvelles données, de faire des
    prédictions sur les nouvelles données, etc. Cette syntaxe permet
    d'écrire des modèles précis, facilement compréhensibles. 
 
@@ -573,11 +574,11 @@ l'on ajoute des points au cluster.
    pas adapté à toutes mes expériences, qui pouvaient être très
    longues. J'utilisais alors Grid5000, qui est un testbed mis à la
    disposition des chercheurs pour la recherche reproductible,
-   regroupant 12000 cœurs et 800 nœuds en cluster dans toute la
+   regroupant 12000 c\oe{}urs et 800 n\oe{}uds en cluster dans toute la
    France. Il permet ainsi d'effectuer aisément des expériences à
    grande échelle liées au calcul de haute performance, et cela avec
    beaucoup de contrôle sur l'environnement (traçabilité,
-   reconfiguration à chaque demande d'obtention d'un nœud, possibilité
+   reconfiguration à chaque demande d'obtention d'un n\oe{}ud, possibilité
    d'exporter puis réimporter un environnement…). 
 
    Enfin, j'utilisais à l'occasion l'environnement de développement
@@ -829,7 +830,7 @@ gamma, et ce pour chacun de nos 64 hôtes, avec une grande ellipse
 contenant 95% des distributions. 
 
 \begin{figure}[!h]
-\includegraphics[width=\textwidth]{./images/alpha_on_theta_ellipse.png}
+\includegraphics[width=\textwidth]{./images/alpha_on_theta_lm.png}
 \caption{distribution du paramètre alpha selon theta}
 \end{figure}
 
