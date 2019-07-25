@@ -142,16 +142,15 @@ Annexe
    l'équipe Polaris (Performance analysis and Optimization of LARge
    Infrastructures and Systems) dont je dépendais. L'équipe Polaris
    étudie les performances et l'optimisation de systèmes de grande
-   envergure, générant beaucoup de données. Le LIG Grenoble est
-   présent au sein du bâtiment IMAG de Saint-Martin d'Hères, avec 5
-   autres laboratoires: 
+   taille, générant beaucoup de données. Le LIG Grenoble est
+   présent au sein du bâtiment IMAG de Saint-Martin d'Hères, avec 4
+   autres laboratoires ou unités: 
     - l'Agence pour les Mathématiques en Interaction avec les
       Entreprises et la Société (AMIES) 
     - Grenoble Alpes Recherche Infrastructure de CAlcul Intensif et de
       Données (GRICAD)
-    - Laboratoire Jean Kuntzmann (LJK)
-    - MI2S
-    - VERIMAG
+    - le laboratoire Jean Kuntzmann (LJK)
+    - le laboratoire VERIMAG
 
     Grâce aux compétences diverses des chercheurs travaillant dans le
     bâtiment, l'IMAG permet de profiter d'un grand nombre de
@@ -169,7 +168,7 @@ Annexe
 
    En outre, comme mentionné auparavant, de nombreux séminaires ont
    lieu au sein du LIG, dont certains sur la thématique de l'écologie
-   et du développement durable. De plus l'entreprise INRIA, partenaire
+   et du développement durable. De plus l'institut INRIA, partenaire
    du LIG, s'implique beaucoup dans le développement durable au
    travers du projet E2S (Energy Environment Solutions), réalisé en
    collaboration avec l'INRA et l'université de Pau et du Pays de
@@ -186,116 +185,123 @@ Annexe
    s'impliquent beaucoup dans la problématique de développement
    durable.
 * Contexte
-** Le calcul de haute performance
-   De nos jours, l'informatique de haute performance (High Performance
-   Computing) est de plus en plus nécessaire dans de nombreux
-   domaines: simulation scientifique, prédictions météorologiques,
-   etc. Les superordinateurs sont utilisés pour des opérations
-   traitant et générant des milliers de données, le plus rapidement
-   possible; mais les besoins grandissants pour ce type de machine
-   augmente la complexité de leur architecture d'années en années. 
+** Le calcul à haute performance
+   De nos jours, le calcul à haute performance (High Performance
+   Computing) est devenu indispensable dans de nombreux domaines:
+   simulation scientifique, prédictions météorologiques, etc. Les
+   superordinateurs sont utilisés pour des opérations traitant et
+   générant des milliers de données, le plus rapidement possible; mais
+   les besoins grandissants pour ce type de machine augmente la
+   complexité de leur architecture d'années en années. 
 
    En effet, si pendant des décennies les performances des ordinateurs
-   doublaient tous les 18 mois selon la loi de Moore, en augmentant la
-   fréquence d'horloge des processeurs, cela n'est plus le cas à cause
-   des problématiques de consommation d'électricité et de
-   thermorégulation. Pour répondre à ces problématiques, les
-   fabricants de processeurs ont commencé à augmenter le nombre de
-   c\oe{}urs par processeur. Ainsi, les superordinateurs contiennent des
-   centaines de noeuds, chacun contenant plusieurs processeurs
-   multi-c\oe{}urs; avec certains de ces processeurs possédant plusieurs
-   niveau de cache, ou mettant en \oe{}uvre du multi-threading… Ces
-   architectures permettent une grande performance de calcul, mais
-   créent une grande variabilité au niveau des calculs et une
-   incertitude sur la prédiction et de l'évaluation de performance. Il
-   devient difficile d'estimer les performances "anormales", et d'en
-   tirer des conclusions. 
+   doublaient tous les 18 mois, en augmentant la fréquence d'horloge
+   des processeurs, cela n'est plus le cas à cause des problématiques
+   de consommation d'électricité et de thermorégulation. Pour répondre
+   à ces problématiques, les fabricants de processeurs ont commencé à
+   augmenter le nombre de c\oe{}urs par processeur. Ainsi, les
+   superordinateurs contiennent des centaines de noeuds, chacun
+   contenant plusieurs processeurs multi-c\oe{}urs; avec certains de
+   ces processeurs possédant plusieurs niveau de cache, ou mettant en
+   \oe{}uvre du multi-threading… Ces architectures permettent une
+   grande performance de calcul, mais induisent une certaine
+   variabilité au niveau des durées de calculs et une incertitude sur
+   la prédiction et de l'évaluation de performance. Il devient
+   difficile d'estimer les performances "normales", et d'en tirer des
+   conclusions.
 
-   En outre, cette complexité d'architecture pousse les applications
-   parallèles à utiliser des technologies comme MPI (Message Passing
-   Interface) pour communiquer entre les différents c\oe{}urs d'un
-   processeur, point à point ou de manière collective, afin que chaque
+   En outre, cette complexité d'architecture impose aux applications
+   parallèles d'utiliser des technologies comme MPI (Message Passing
+   Interface) pour communiquer entre les différents noeuds d'un
+   superordinateur, point à point ou de manière collective, afin que chaque
    processus puisse effectuer une partie d'un grand calcul. MPI a donc
    aidé aux développement de superordinateurs de plus en plus
    puissants, ce qui a conduit à l'établissement du TOP500 des
-   machines les plus performantes. Ce TOP500 est basé sur les
+   machines les plus performantes. Ce classement est basé sur les
    résultats du benchmark HPL, calculant la décomposition LU d'une
-   matrice de grande taille et utilisant MPI. Il devient alors
-   intéressant de simuler l'exécution d'applications parallèles sur
-   des systèmes de haute performance, notamment avec SimGrid, un
-   simulateur doté de plusieurs outils comme SMPI, une
-   ré-implémentation de MPI sur SimGrid. 
+   matrice dense de grande taille et utilisant MPI. 
+
+   L'objectif de mon stage a été de contribuer aux techniques de
+   modélisation et d'évaluation de performances d'applications
+   parallèles sur des systèmes de haute performance, notamment à
+   l'aide de simulations avec SimGrid, un simulateur doté de plusieurs
+   outils comme SMPI, une ré-implémentation de MPI sur SimGrid. 
 ** TODO Travaux de Tom: prédictions d'applications MPI
 ** Type de mesures et de modèles
-   Les mesures récupérées pour ces expériences sont assez
-   expérimentales, et peuvent être biaisées en fonction de la
-   température interne des machines, de divers effets de cache, de la
-   rapidité d'un c\oe{}ur par rapport à un autre, etc. De plus, les
-   systèmes analysés ne sont pas toujours ergodiques ou
-   stationnaires; c'est à dire qu'une collection d'échantillons
-   aléatoires du système ne représentent pas forcément ses propriétés
-   statistiques, et que le système peut changer dans le temps. 
+   Les mesures récupérées pour modéliser ces systèmes sont issues
+   d'expériences spécifiques et contrôlées mais peuvent néanmoins être
+   biaisées en fonction de la température interne des machines, de
+   divers effets de cache, de la rapidité d'un c\oe{}ur par rapport à
+   un autre, etc. De plus, les systèmes analysés ne sont pas toujours
+   ergodiques ou stationnaires; c'est à dire qu'une collection
+   d'échantillons aléatoires du système ne représentent pas forcément
+   ses propriétés statistiques, et que le système peut changer dans le
+   temps. 
 
-   Ces contraintes ont poussé Tom à définir plusieurs types de
-   modèles, selon les mesures. On définit M-x N-y comme un modèle de
-   complexité x, avec un bruit de complexité y. Par exemple: 
+   Ces contraintes ont poussé mes encadrants à définir plusieurs types de
+   modèles, selon le degré de compatibilité du système observé. On
+   définit M-$ N-$ comme un modèle de complexité $, avec un bruit de
+   complexité $. Par exemple: 
     - M-0 indique un modèle où la durée d'exécution est constante et
       indépendante des paramètres du modèle. De même N-0 indique
       l'absence de bruit. 
     - M-1 indique un modèle linéaire, où la durée dépend d'une
       combinaison des paramètres donnés (souvent un paramètre
       dépendant de x et un paramètre constant). De même N-1 indique un
-      bruit avec une distribution normale. 
+      bruit avec une distribution normale (le modèle de bruit le plus
+      simple qui soit). 
     - M-2 indique un modèle polynomial, et de même pour N-2.
     - M_H et N_H sont des notations spécifiques répondant à la
       problématique de variabilité spatiale, et indiquant donc que les
       mesures doivent être effectuées par hôte. 
-    - M' indique un modèle linéaire pour certaines valeurs
-      spécifiques, et N' un bruit dont la distribution serait une
-      mixture de gaussiennes. 
+    - M' indique un modèle linéaire par morceaux, et N' un bruit dont
+      la distribution serait une mixture de gaussiennes. 
 
    Ces notations ont ensuite été utilisées pour déterminer quel type
-   de modèle utiliser. Il a été choisi que le noyau dgemm utiliserait
-   un modèle M_H-2 N_H-2, tandis que pour les autres noyaux de calcul un
-   modèle M-1 N-2 suffirait. Les communications MPI, étant linéaires
+   de modèle utiliser selon les ressources (communications MPI, noyaux
+   de calcul, ...). Il a été établi que le noyau dgemm utiliserait un
+   modèle M_H-2 N_H-2, tandis que pour les autres noyaux de calcul un
+   modèle M-1 N-0 suffirait. Les communications MPI, étant linéaires
    en fonction de la taille du message mais dépendant du protocole
    utilisé, ont été modélisées par un modèle M'-1 N'-1. 
 ** Limitations des travaux précédents, objectifs du stage
-   Il existe quelques limitations à ce travail de simulation : la
-   prise en compte des variabilités spatiales et temporelles, ainsi
-   que la spécificité du système, ont forcé Tom à utiliser des modèles
-   et des solutions ad hoc pour ses estimations. En effet, les modèles
-   choisis l'ont été en connaissance de cause, après avoir déjà
-   remarqué les spécificités des différents noyaux de calcul à
-   simuler: par exemple dgemm est plus long à s'exécuter sur certains
-   n\oe{}uds, et possède des valeurs pour la taille des matrices pour
-   lesquelles la durée est systématiquement plus longue que pour
-   d'autres, ce qui indique un comportement non linéaire. De même pour
-   les communications réseaux discontinues. Il a également du générer
-   du code, notamment ajouté un appel à la fonction random pour
-   prendre en compte la variabilité temporelle. Cette solution
-   fonctionne, mais ne permet pas une vision à long terme et une
-   utilisation de ce travail dans un autre contexte. 
+   Il existe quelques limitations à cette approche et aux travaux
+   présentés dans Cluster2019: la prise en compte des variabilités
+   spatiales et temporelles, ainsi que la spécificité du système, ont
+   forcé mes encadrants à utiliser des modèles et des solutions ad hoc
+   pour ses estimations. En effet, les modèles choisis l'ont été en
+   connaissance de cause, après avoir déjà remarqué les spécificités
+   des différents noyaux de calcul à simuler: par exemple dgemm est
+   plus long à s'exécuter sur certains n\oe{}uds, et possède des
+   valeurs pour la taille des matrices pour lesquelles la durée est
+   systématiquement plus longue que pour d'autres, ce qui indique un
+   comportement non linéaire. De même pour les communications réseaux
+   discontinues. Il a également dû écrire du code spécifique,
+   notamment la génération de nombres aléatoires pour rendre compte de
+   la variabilité temporelle. Cette solution fonctionne, mais n'est
+   pas générique et ne permet pas une vision à long terme et une
+   réutilisation de ce travail dans un autre contexte. 
 
    Considérant les limitations mentionnées, l'objectif principal de
    mon stage était d'estimer la possibilité d'avoir une solution plus
-   générique avec un sampler Bayésien, soit des modèles généraux
-   pouvant facilement s'appliquer à plusieurs noyaux de calcul, voire
-   même aux communications réseau, sans avoir à être beaucoup
-   changés. En effet, on aurait besoin de modèles génériques, souvent
-   linéaire mais parfois avec des ruptures ou des mixtures, pouvant
-   s'adapter à des besoins un peu particuliers. Pour cela il fallait
-   donc élaborer des modèles correspondant à des noyaux de calculs,
-   puis les évaluer en terme de résultats et de performance. La
-   précision des modèles et leur proximité à la réalité, la rapidité
-   des estimations ainsi que la variabilité entre les estimations sont
-   d'autant de problématiques que j'ai du aborder. 
+   générique avec un sampler Bayésien, permettant d'exprimer des
+   modèles généraux pouvant facilement s'appliquer à plusieurs noyaux
+   de calcul, voire même aux communications réseau, sans avoir à être
+   beaucoup changés. En effet, on aurait besoin de modèles génériques,
+   souvent linéaire mais parfois avec des ruptures ou des mixtures,
+   pouvant s'adapter à des besoins un peu particuliers. Pour cela il
+   fallait donc élaborer des modèles correspondant à des noyaux de
+   calculs, puis les évaluer en terme de résultats et de
+   performance. La précision des modèles et leur proximité à la
+   réalité, la rapidité des estimations ainsi que la variabilité entre
+   les estimations sont d'autant de problématiques que j'ai du
+   aborder.
 
    Avant de commencer mon stage, certaines contraintes avaient déjà
-   envisagées par Arnaud et Tom; notamment la complexité de certains
-   modèles (surtout les modèles hiérarchiques), ainsi que la prise en
-   compte des spécificités des noyaux de calculs, telles que la
-   présence d'un bruit non linéaire ou le besoin de séparer les
+   été envisagées par mes encadrants; notamment la complexité de
+   certains modèles (surtout les modèles hiérarchiques), ainsi que la
+   prise en compte des spécificités des noyaux de calculs, telles que
+   la présence d'un bruit non linéaire ou le besoin de séparer les
    estimations selon les CPUs utilisés. 
 * État de l'Art
 ** L'approche Bayésienne
@@ -309,7 +315,8 @@ Annexe
    le plus probable, ce qui peut se faire avec des connaissances
    préalables qu'on appellera prior. 
 
-   Le théorème de Bayes est le suivant:
+   Le théorème de Bayes est le suivant, où A correspond à notre
+   hypothèse et B à nos observations:
    \begin{equation} p(A|B)=\frac{p(B|A)*p(A)}{p(B)}  \end{equation}
 
    Autrement dit, on cherche la probabilité de A sachant B, en
@@ -318,7 +325,9 @@ Annexe
    essaye de déterminer la probabilité selon les données qu'on possède
    déjà et nos connaissances préalables qu'on appellera prior. 
 
-   On peut aussi écrire le théorème de la façon suivante:
+   On peut aussi écrire le théorème de la façon suivante, où la
+   probabilité de A sachant B est le postérieur, la probabilité de B
+   sachant A est le modèle et la probabilité de A est le prior:
    \begin{equation} p(A|B) \propto p(B|A)*p(A)  \end{equation}
 
    Ceci indique que la distribution du postérieur (la probabilité de A
@@ -337,50 +346,29 @@ Annexe
    ne devraient pas impacter négativement les résultats, ils n'auront
    juste aucune utilité. 
 
-   Pour connaître la distribution du postérieur, on fait des tirages
-   d'échantillons de données jusqu'à l'approximer. L'échantillonnage
-   (sampling) permet de trouver des valeurs proches des paramètres
-   ayant permis de générer les données ainsi que leur distribution de
-   probabilité, et de mieux comprendre cette dernière pour pouvoir
-   ensuite l'exploiter, avec par exemple la simulation de nouvelles
-   prédictions pour le modèle. Pour cela, l'algorithme de sampling
-   parcours des chaînes de Markov qui ont pour lois stationnaires les
-   distributions à échantillonner. On expliquera le procédé de
-   simulation du sampler Stan qui a été utilisé dans la section
-   suivante.
+(slides arnaud 2,4,8/46)
 
-   L'approche Bayésienne consiste donc à trouver une distribution
-   correspondant aux paramètres en utilisant une méthode intuitive:
-   on pars de nos connaissances préalables, et en fonction des données
-   qu'on dispose on affine notre modèle. Cette approche est donc utile
-   dans des situations où on veut pouvoir renseigner des priors et
-   quantifier notre incertitude par rapport aux résultats.
++ L'estimateur du maximum de vraisemblance est un algorithme permettant
+d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
+échantillon. L est la fonction de densité à paramètres \theta correspondant
+à un échantillon de variables aléatoires discrètes. Soit:
+$L(\theta)=p(x1...xN | \theta)$ représentant la probabilité d'avoir les
+observations x1...xN étant donné les paramètres \theta. Les estimateurs
+$\widehat{\theta}$ du maximum de vraisemblance des paramètres \theta sont les valeurs
+maximisant L, soit minimisant la fonction de perte. L'objectif de
+l'algorithme est donc d'inférer les paramètres de la loi de
+probabilité d'un échantillon en trouvant les valeurs des paramètres \theta
+permettant d'atteindre le maximum de la vraisemblance L.
 
-   Il existe plusieurs samplers Bayésiens, mais ce domaine est encore
-   assez récent car l'approche Bayésienne requiert une grande
-   puissance de calcul que les ordinateurs n'avaient pas jusqu'à assez
-   récemment. La majorité des samplers utilisent un procédé de
-   simulation appelé Markov Chain Monte Carlo (MCMC) qui suit une
-   variante de l'algorithme de Metropolis-Hastings. Cet algorithme
-   fonctionne de la manière suivante. A chaque itération:
-    - On pars d'un point initial, représenté par le tirage précédent
-    - On propose d'aller sur un autre point, et on évalue si la
-      distribution avec ce nouveau point explique mieux les données que
-      l'ancienne distribution, donc si la probabilité d'obtenir nos
-      données avec ces nouveau paramètre est plus élevée.
-    - Si oui on fait un tirage sur ce nouveau point
-
-\begin{figure}[h]
-\includegraphics[width=\textwidth]{./images/gibbs_sampling.png}
-\caption{source: https://jessicastringham.net/2018/05/09/gibbs-sampling/}
-\end{figure}
-
-   On peut reconnaître cet algorithme dans l'image du milieu, où on
-   comprend que la simulation a commencé à peu près au point (3,-3) et
-   s'est ensuite rapprochée au fur et à mesure de la zone où il y
-   avait les données.
+   L'approche d'inférence Bayésienne par échantillonage consiste donc
+   à trouver une distribution correspondant aux paramètres en
+   utilisant une méthode intuitive: on pars de nos connaissances
+   préalables, et en fonction des données qu'on dispose on affine
+   notre modèle. Cette approche est donc utile dans des situations où
+   on veut pouvoir renseigner des priors et quantifier notre
+   incertitude par rapport aux résultats. 
  
-** L'approche Machine Learning
+** L'approche Machine Learning et maximisation de la vraisemblance
 L'approche machine learning suit un principe d'auto-apprentissage:
 contrairement à l'approche bayésienne qui fait correspondre les
 données à un modèle avec des hypothèses à vérifier pour trouver les
@@ -390,32 +378,31 @@ va pouvoir effectuer des prédictions. La notion d'apprentissage est
 équivalente à construire le modèle qui se rapprochera le plus des
 données.  
 
-L'algorithme de machine learning récupère des estimations produites
-par une machine, dont la performance dépend des données rencontrées,
-et plus il rencontre d'observations, plus il s'améliore et récupère
-des estimations précises. La démarche consiste donc à faire une
-expérience plusieurs fois, et à calculer la probabilité empirique des
-résultats à chaque fois. Plus le nombre de fois qu'on fait
-l'expérience est élevé, meilleurs seront les résultats. Cependant,
-comme on fait une approximation de la réalité, on a une perte
-d'information qui correspond à un bruit non modélisé indépendant des
-données. 
+L'algorithme de machine learning récupère des estimations dont la
+performance dépend des données rencontrées, et plus il rencontre
+d'observations, plus il s'améliore et récupère des estimations
+précises. La démarche consiste donc à faire une expérience plusieurs
+fois, et à calculer la probabilité empirique des résultats à chaque
+fois. Plus le nombre de fois qu'on fait l'expérience est élevé,
+meilleurs seront les résultats. Cependant, comme on fait une
+approximation de la réalité, on a une perte d'information qui
+correspond à un bruit non modélisé indépendant des données. 
 
-On a trois algorithmes principaux: la descente de gradient,
-l'estimateur du maximum de vraisemblance et le clustering. La descente
-de gradient est un algorithme dont le but est de trouver le minimum
-d'une fonction dérivable et dont on connaît l'expression mais où le
-calcul du minimum est compliqué. Il suit une approche itérative qui à
-chaque pas calcule la pente de la fonction (sa dérivée) en fonction du
-point de départ et y avance plus ou moins selon la taille du pas
-d'apprentissage \eta; et ceci jusqu'à converger en un minimum.  
+L'algorithme principal est la descente de gradient afin de calculer un
+estimateur du maximum de vraisemblance. Son but est de trouver le
+minimum d'une fonction dérivable et dont on connaît l'expression mais
+où le calcul du minimum est compliqué. Il suit une approche itérative
+qui à chaque pas calcule la pente de la fonction (sa dérivée) en
+fonction du point de départ et y avance plus ou moins selon la taille
+du pas d'apprentissage \eta; et ceci jusqu'à converger en un minimum.
 
 \begin{figure}[h]
 \begin{center}
-\includegraphics[width=300px]{./images/descente_gradient.png}
-\caption{source: https://www.neural-networks.io/fr/single-layer/gradient-descent.php}
+\includegraphics[height=150px]{./images/descente_gradient.png}
+\caption[Exemple de descente de gradient]{Exemple de descente de gradient\footnotemark}
 \end{center}
 \end{figure}
+\footnotetext{source de l'image: https://www.neural-networks.io/fr/single-layer/gradient-descent.php}
 
 
 Attention à taille de \eta: plus il est grand plus on avance loin à
@@ -429,53 +416,52 @@ effet selon la valeur de départ choisie l'algorithme peut partir sur
 une mauvaise pente et s'arrêter sur un minimum local, mais pas
 global. Il faut donc que la valeur de départ soit plus proche du
 minimum recherché que d'un minimum local pour trouver un bon
-résultat. Le "vanishing gradient" indique un tracé de fonction avec
-des valeurs "plateau" où l'algorithme se bloquerait, l'empêchant de
-trouver le minimum. 
+résultat. Le "vanishing gradient" fait référence à un tracé de
+fonction avec des valeurs "plateau" où l'algorithme se bloquerait,
+l'empêchant de trouver le minimum.
 
-L'estimateur du maximum de vraisemblance est un algorithme permettant
-d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
-échantillon. L est la fonction de densité à paramètres \theta correspondant
-à un échantillon de variables aléatoires discrètes. Soit:
-$L(\theta)=p(x1...xN | \theta)$ représentant la probabilité d'avoir les
-observations x1...xN étant donné les paramètres \theta. Les estimateurs
-$\widehat{\theta}$ du maximum de vraisemblance des paramètres \theta sont les valeurs
-maximisant L, soit minimisant la fonction de perte. L'objectif de
-l'algorithme est donc d'inférer les paramètres de la loi de
-probabilité d'un échantillon en trouvant les valeurs des paramètres \theta
-permettant d'atteindre le maximum de la vraisemblance L.
+L'utilisation de la descente de gradient requiert donc des conditions
+initiales, et plusieurs exécutions pour s'assurer que l'algorithme
+aura bien convergé sur le minimum global.
 
-Enfin l'algorithme de clustering permet d'identifier et de former des
-petits groupes séparés partageant des caractéristiques communes parmi
-les données. On peut indiquer en amont les différents groupes, ou
-juste leur nombre et laisser l'algorithme les trouver, par exemple
-avec l'algorithme kmeans qui affecte les données aux clusters selon
-leur proximité (au sens de la somme des carrés) aux points médians des
+Enfin l'algorithme de clustering est un cas particulier utilisé dans
+un espace choisi permettant d'identifier et de former des petits
+groupes séparés de données partageant des caractéristiques
+communes. On peut indiquer en amont les différents groupes, ou juste
+leur nombre et laisser l'algorithme les trouver, par exemple avec
+l'algorithme kmeans qui affecte les données aux clusters selon leur
+proximité (au sens de la somme des carrés) aux points médians des
 clusters. Les emplacements des points médians sont affinés selon que
 l'on ajoute des points au cluster.
+
+Ces algorithmes sont très riches et relativement rapide d'exécution
+mais ne donnent qu'une seule valeur comme résultat, et n'offrent
+aucune mesure d'incertitude.
 ** Le fonctionnement de Stan
    Stan utilise l'algorithme MCMC présenté précédemment, ce qui permet
-   à la simulation de parcourir un espace de valeurs possibles assez
-   rapidement. Le procédé a également une période de "warm up", où
-   les tirages partent d'un point initial et peuvent donc être très
-   éloignés des valeurs réelles et des autres tirages. Une fois le
-   warm up terminé, le procédé a déterminé une zone réduite pour faire
-   les tirages, et va alors continuer à l'affiner jusqu'à trouver des
-   valeurs assez précises. Ce procédé de simulation fonctionne mieux
-   lorsqu'on le lance plusieurs fois, soit avec plusieurs chaînes: en
-   effet puisque les chaînes ne commencent pas au même point initial,
-   on peut avoir une certaine confiance en notre résultat si on
-   s'aperçoit qu'elles convergent (pour les itérations
-   d'échantillonnage, puisque les résultats des itérations de "warm
-   up" ne donnent pas des résultats significatifs).
+   à la simulation de parcourir assez rapidement un espace de valeurs
+   possibles, en suivant une certaine distribution. Le procédé a
+   également une période de "warm up", où les tirages partent d'un
+   point initial et peuvent donc être très éloignés des valeurs
+   réelles et des autres tirages. Une fois le warm up terminé, le
+   procédé a déterminé une zone réduite pour faire les tirages, et va
+   alors continuer à tirer dans cette zone jusqu'à trouver des valeurs
+   assez précises. Ce procédé de simulation fonctionne mieux lorsqu'on
+   le lance plusieurs fois, soit avec plusieurs chaînes: en effet
+   puisque les chaînes ne commencent pas au même point initial, cela
+   permet de s'affranchir des conditions initiales et d'augmenter la
+   confiance en notre résultat si on s'aperçoit qu'elles convergent
+   dans la même zone (pour les itérations d'échantillonnage, puisque
+   les résultats des itérations de "warm up" ne donnent pas des
+   résultats significatifs).
 
 \begin{figure}[h]
 \includegraphics[width=\textwidth]{./images/trace_rapport.png}
 \caption{trace du paramètre coefficient}
 \end{figure}
 
-   En effet ici les 8 chaînes ont convergé autour de la même zone:
-   environ la valeur 3,8.
+   La figure 3.3 illustre la convergence de 8 chaînes indépendantes
+   autour de la même zone: environ la valeur 3,8.
 
    Stan a une syntaxe sous forme de sections, ou bloc. Chacun des
    blocs a un but précis, et toute variable déclarée dans un bloc est
@@ -490,10 +476,11 @@ l'on ajoute des points au cluster.
    des variables, et celles ci ne peuvent pas être des entiers. Le
    bloc "transformed parameters" permet de déclarer et assigner des
    valeurs à d'autres paramètres. Enfin le bloc "model" permet
-   d'indiquer les priors et la likelihood, et le bloc "generated
+   d'indiquer les priors et le modèle, et le bloc "generated
    quantities" permet de créer de nouvelles données, de faire des
-   prédictions sur les nouvelles données, etc. Cette syntaxe permet
-   d'écrire des modèles précis, facilement compréhensibles. 
+   prédictions sur les nouvelles données, etc. Cette syntaxe générique
+   permet d'écrire des modèles précis et aussi facilement
+   compréhensibles.
 
    Stan requiert obligatoirement l'utilisation de priors (si aucun
    n'est renseigné il utilise des priors non informatif par défaut),
@@ -538,6 +525,43 @@ l'on ajoute des points au cluster.
    donnés sont correct ou non, et essayer de régénérer de nouvelles
    données avec les paramètres pour comparer avec les données
    initiales. 
+
++  Pour connaître la distribution du postérieur, on fait des tirages
+   d'échantillons de données jusqu'à l'approximer. L'échantillonnage
+   (sampling) permet de trouver des valeurs proches des paramètres
+   ayant permis de générer les données ainsi que leur distribution de
+   probabilité, et de mieux comprendre cette dernière pour pouvoir
+   ensuite l'exploiter, avec par exemple la simulation de nouvelles
+   prédictions pour le modèle. Pour cela, l'algorithme de sampling
+   parcours des chaînes de Markov qui ont pour lois stationnaires les
+   distributions à échantillonner. On expliquera le procédé de
+   simulation du sampler Stan qui a été utilisé dans la section
+   suivante.
+
++  Il existe plusieurs samplers Bayésiens, mais ce domaine est encore
+   assez récent car l'approche Bayésienne requiert une grande
+   puissance de calcul que les ordinateurs n'avaient pas jusqu'à assez
+   récemment. La majorité des samplers utilisent un procédé de
+   simulation appelé Markov Chain Monte Carlo (MCMC) qui suit une
+   variante de l'algorithme de Metropolis-Hastings. Cet algorithme
+   fonctionne de la manière suivante. A chaque itération:
+    - On pars d'un point initial, représenté par le tirage précédent
+    - On propose d'aller sur un autre point, et on évalue si la
+      distribution avec ce nouveau point explique mieux les données que
+      l'ancienne distribution, donc si la probabilité d'obtenir nos
+      données avec ces nouveau paramètre est plus élevée.
+    - Si oui on fait un tirage sur ce nouveau point
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{./images/gibbs_sampling.png}
+\caption[Exemple de l'algorithme de sampling Gibbs]{Exemple de l'algorithme de sampling Gibbs\footnotemark}
+\end{figure}
+\footnotetext{source de l'image: https://jessicastringham.net/2018/05/09/gibbs-sampling/}
+
+   On peut reconnaître cet algorithme dans l'image du milieu, où on
+   comprend que la simulation a commencé à peu près au point (3,-3) et
+   s'est ensuite rapprochée au fur et à mesure de la zone où il y
+   avait les données.
 * Méthodologie
    Une des problématiques auxquelles mon stage, comme tous les stages
    de recherche, devait répondre est la reproductibilité: en effet
@@ -545,7 +569,8 @@ l'on ajoute des points au cluster.
    refaites de façon exacte, donc l'environnement de travail doit être
    contrôlé et les outils et données utilisées doivent être notés et
    disponibles. La problématique de reproductibilité m'a été présentée
-   au travers du MOOC réalisé par Arnaud Legrand et d'autres. 
+   au travers du MOOC réalisé par Arnaud Legrand, Christophe Pouzat et
+   Konrad Hinsen \footnote{https://www.fun-mooc.fr/courses/course-v1:inria+41016+session02/info}. 
 
    Pour cela, mais également pour rendre le suivi de stage plus aisé,
    j'ai maintenu pendant ces trois mois un cahier de laboratoire,
@@ -554,22 +579,25 @@ l'on ajoute des points au cluster.
    seulement les résultats majeurs de mes recherches mais aussi tous
    les détails de mon travail: les objectifs, le travail réalisé, les
    résultats et les conclusions tirées, les problèmes rencontrés, les
-   corrections, etc. Ce journal a permis à mes encadrants de pouvoir
-   suivre mon travail au jour le jour de façon très aisée, le document
-   étant structuré de façon chronologique et thématique, avec des
-   sections dépliables et une planification des tâches sous forme de
-   Todo list. Mes encadrants pouvaient donc me faire des retours
-   réguliers sous forme d'échanges par mail ou de réunion hebdomadaire
-   pour définir les objectifs du stage au fur et à mesure. 
+   corrections, etc
+   \footnote{https://github.com/hoellejal/automating-calculation-kernels-modelling/blob/master/journal.org}. 
+
+   Ce journal a permis à mes encadrants de pouvoir suivre mon travail
+   au jour le jour de façon très aisée, le document étant structuré de
+   façon chronologique et thématique, avec des sections dépliables et
+   une planification des tâches sous forme de Todo list. Mes
+   encadrants pouvaient donc me faire des retours réguliers sous forme
+   d'échanges par mail ou de réunion hebdomadaire pour définir les
+   objectifs du stage au fur et à mesure. 
 
    De plus, la grosse majorité de mes expériences ont été réalisées
-   sur ce cahier, à l'exception de celles réalisées sur Grid5000. En
-   effet, Org-Mode inclus un langage de balisage similaire à Markdown,
-   permettant d'exécuter du code sur le journal: celui ci contient
-   donc des sections en langage naturel, suivi de sections de code
-   avec différents langages de programmation. Org-Mode a donc permis
-   de regrouper en un seul journal les notes de mes recherches et les
-   expériences. 
+   directement dans ce cahier, à l'exception de celles réalisées sur
+   Grid5000. En effet, Org-Mode inclus un langage de balisage
+   similaire à Markdown, permettant d'exécuter du code sur le journal:
+   celui ci contient donc des sections en langage naturel, suivi de
+   sections de code avec différents langages de
+   programmation. Org-Mode a donc permis de regrouper en un seul 
+   journal les notes de mes recherches et les expériences.
 
    Cependant l'exécution de code sur le cahier de laboratoire n'était
    pas adapté à toutes mes expériences, qui pouvaient être très
@@ -594,32 +622,35 @@ l'on ajoute des points au cluster.
    Comme le but du stage était de comparer l'échantillonnage Bayésien
    à la maximisation de vraisemblance, j'ai commencé par faire un
    modèle simple des données avec une régression linéaire. Je me suis
-   rapidement aperçu que celle ci avait deux inconvénients: on ne
-   pouvait pas modéliser un bruit non linéaire, et le paramètre
-   indépendant de x avait tendance à avoir des valeurs étranges car il
-   n'était pas significatif dans la génération des données. Le
-   problème est qu'il introduisait donc un biais dans l'estimation de
-   nouvelles données à partir des paramètres. Ce modèle n'était donc
-   pas idéal, et le but était de pouvoir l'écrire plus proprement, et
-   d'avoir des résultats plus significatifs avec Stan.
+   rapidement aperçu que la régression linéaire avait deux
+   inconvénients dans notre cas: comme elle ne permet pas de modéliser
+   le bruit, il était difficile de lui indiquer une distribution du
+   bruit qui ne serait pas linéaire. De plus, le paramètre du modèle
+   qui est indépendant de x, l'intercept, avait tendance à avoir des
+   valeurs étranges car il n'était pas significatif dans la génération
+   des données. Le problème est qu'il introduisait donc un biais dans
+   l'estimation de nouvelles données à partir des paramètres
+   trouvés. Ce modèle n'était donc pas idéal, et le but était de
+   pouvoir l'écrire plus proprement, et d'avoir des résultats plus
+   significatifs avec Stan. 
 
    Avant de réaliser des modèles sur les données des noyaux de calcul,
-   j'ai travaillé avec des simples données générées, pour me
-   familiariser avec l'outil Stan mais aussi pour résoudre des
-   problèmes que je mentionnerais dans la section suivante, liés à la
-   précision de la simulation. Ces premiers tests ont permis de
-   remarquer que les modèles écrits en Stan sont très complets, et
-   donc facilement compréhensibles, mais cela n'influe pas sur leur
-   complexité: on peut très bien écrire des modèles très simples, qui
-   s'exécuteront rapidement.
+   j'ai travaillé avec des données synthétiques, pour me familiariser
+   avec l'outil Stan mais aussi pour résoudre des problèmes que je
+   mentionnerais dans la section suivante, liés à la précision de la
+   simulation. Ces premiers tests ont permis de remarquer que les
+   modèles écrits en Stan sont très complets, et donc facilement
+   compréhensibles, mais cela n'influe pas sur leur complexité: on
+   peut très bien écrire des modèles simples, par exemple des modèles
+   linéaires sans bruit, qui s'exécuteront rapidement. 
 
    Ensuite j'ai travaillé sur les données de la fonction dgemm de
-   OpenBlas fournies par Tom: plus précisément sur la durée
+   OpenBlas fournies par mes encadrants: plus précisément sur la durée
    d'exécution de cette fonction en fonction de la taille de la
-   matrice (déterminée par le paramètre M*N*K). J'ai commencé par
+   matrice (déterminée par les paramètres M,N et K). J'ai commencé par
    écrire un modèle linéaire avec du bruit polynomial (M-1 N-2): celui
    ci contenait deux paramètres constants \beta et \delta et deux paramètres
-   dépendant de M*N*K: \alpha et \gamma. La figure ci-dessous illustre ce
+   dépendant de M*N*K: \alpha et \gamma. La figure 5.1 illustre ce
    modèle. J'ai ensuite écrit un modèle polynomial avec le même bruit
    (M-2 N-2), puis j'ai ajouté de la complexité à ces modèles par
    couche.  
@@ -633,40 +664,42 @@ l'on ajoute des points au cluster.
 
    Le modèle polynomial est très similaire, la principale différence
    étant l'inclusion de plus de paramètres. En effet, cette fois ci on
-   considère l'influence des coefficients M*N, M*K et N*K dans la
-   vitesse d'exécution. La likelihood est donc légèrement modifiée: 
+   considère l'influence des coefficients M*N, M*K et N*K. Le modèle
+   est donc légèrement modifié:  
    \begin{equation} duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta) \end{equation}
 
-   Par la suite, j'ai réécrit ces deux modèles en ajoutant une
+   Par la suite, j'ai réécrit ces deux modèles en ajoutant une autre
    variable déterminante sur laquelle les estimations des paramètres
    devaient s'effectuer: le CPU utilisé. Dans les données fournies,
    dgemm avait été lancée sur 64 CPU différents. Les deux modèles
-   suivants ont donc été conçus pour estimer les paramètres pour les
+   précédents ont donc été adaptés pour estimer les paramètres pour les
    64 hôtes différents. La principale différence de ces modèles était
    que la likelihood devait donc être définie selon les hôtes. On
    avait donc la formule suivante pour le modèle linéaire: 
 
-   \begin{equation} duration_i \sim \Norm(\alpha_i*mnk_i+\beta_i, \gamma_i*mnk_i+\delta_i) \end{equation}
+   \begin{equation} duration_i \sim \Norm(\alpha_i*mnk+\beta_i, \gamma_i*mnk+\delta_i) \end{equation}
 
    Et de même pour le modèle polynomial. Ces deux modèles permettent
-   de simuler la performance de tous les noyaux de calculs utilisés
+   de simuler à peu près la performance des noyaux de calculs utilisés
    dans HPL.
 
-   Cependant, on pourrait se demander si les estimations sont vraiment
-   indépendantes selon les CPUs utilisés, s'il n'y aurait pas une
-   distribution de probabilité des valeurs moyennes des paramètres. On
-   estimerait alors la formule suivante (et de même pour les autres
-   paramètres): 
+   Cependant, on pourrait estimer qu'il est possible d'avoir une
+   distribution de probabilité de valeurs moyennes des paramètres,
+   rendant compte de la variabilité spatiale et à partir de laquelle
+   on tirerait des valeurs pour les paramètres à chaque fois. On
+   estimerait alors la formule suivante comme modèle le plus simple
+   (et de même pour les autres paramètres):
    
    \begin{equation} \alpha_i \sim \Norm(\mu_\alpha,\sigma_a) \end{equation}
+
+   Sachant que le cluster sur lequel on fait nos estimations, Dahu,
+   n'est pas vraiment homogène donc cette hypothèse n'est pas très
+   raisonnable pour un modèle voulant refléter la réalité.
 
    On chercherait alors à estimer principalement les valeurs des deux
    paramètres supplémentaires, qu'on appellera hyperparamètres, car
    une fois qu'on aura leur distribution de probabilité, on pourrait
    calculer des nouvelles valeurs \alpha, \beta, \gamma et \delta pour un nouveau CPU.
-
-   Dans ce modèle hiérarchique, on dira que $\mu_\alpha \sim \Norm(\alpha_moy , \alpha_sd)$ où
-   \alpha_moy et \alpha_sd sont les priors et $\sigma_\alpha \sim \Norm(0,1)$.
 
    Le modèle hiérarchique a donné des bonnes estimations pour le
    modèle linéaire, mais des estimations assez moyennes avec le modèle
@@ -677,50 +710,21 @@ l'on ajoute des points au cluster.
    d'indications.
 
    Enfin, après avoir remarqué sur les histogrammes des paramètres que
-   l'un d'entre eux (alpha précisément) ne ressemblait pas à une
-   distribution normale mais plus à une mixture de distributions
-   normales, j'ai écrit un modèle incluant cette contrainte. Ce
-   dernier modèle diffère un peu plus des précédents en raison de la
-   syntaxe nécessaire pour indiquer qu'un paramètre est une mixture de
-   gaussiennes. En effet, pour écrire une likelihood correspondant à
-   une mixture de deux gaussiennes, la syntaxe est la suivante:
+   \alpha ne ressemblait pas à une distribution normale mais plus à une
+   mixture de distributions normales, j'ai écrit un modèle incluant
+   cette contrainte. Ce dernier modèle diffère un peu plus des
+   précédents en raison de la syntaxe nécessaire pour indiquer qu'un
+   paramètre est une mixture de gaussiennes. En effet, pour écrire une
+   likelihood correspondant à une mixture de deux gaussiennes, la
+   syntaxe est la suivante: 
 
-   \begin{equation} target = target + log_mix(\theta, normal_lpdf(y_n | mu_1, sigma_1),
-   normal_lpdf(y_n | mu_2, sigma_2)) \end{equation}
+   \begin{equation} target = target + log_{mix}(\theta, normal_{lpdf}(y_n | \mu_1, \sigma_1),
+   normal_{lpdf}(y_n | \mu_2, \sigma_2)) \end{equation}
 
-   Ici theta correspond à la proportion de données dans les courbes,
-   et on exprime ensuite la présence de deux distributions normales,
-   avec mu_1 et sigma_1 puis mu_2 et sigma_2.
-
-   Ce modèle n'est pas conclusif: l'expression d'une mixture de
-   gaussiennes fonctionne relativement bien sur des données générées,
-   lorsque cela concerne le résultat, mais lorsqu'on veut l'appliquer
-   à un paramètre du modèle hiérarchique la simulation a besoin de
-   priors extrêmement précis, et les résultats obtenus ne reflètent
-   que les valeurs de ces priors. 
-
-   J'ai comparé la performance et les résultats de ce modèle avec ceux
-   d'une simple régression linéaire et d'un outil de clustering comme
-   kmeans ou mclust. Pour cela, on a décidé de ne pas prendre en
-   compte les paramètres beta et delta: en effet ils ont tous les deux
-   une influence assez faible avec le postérieur, et ne sont pas
-   corrélés à d'autres paramètres comme le sont alpha et gamma. Ainsi,
-   on a effectué une simple régression type $lm(duration \sim mnk+0)$,
-   puis on a récupéré la moyenne et l'écart type du paramètre gamma;
-   ainsi que l'écart type de alpha (on assume qu'il est à peu près
-   similaire pour les deux moyennes). 
-
-   On a ensuite utilisé un outil de clustering pour regrouper les
-   estimations de alpha en deux clusters; puis récupéré les deux
-   moyennes de alpha et la fréquence des points pour chaque
-   cluster. Ces opérations ont été très rapides, et nous ont donc
-   permis d'avoir les estimations des paramètres d'un modèle
-   hiérarchique (mais pas leur distribution, on ignore l'incertitude
-   qu'on a sur ces estimations). De plus ces estimations ne prenaient
-   pas en compte le fait que le bruit n'est pas linéaire. Malgré
-   tout, les estimations par régression linéaire du modèle
-   hiérarchique étaient toutes aussi précises que celles de Stan, tout
-   en étant beaucoup plus rapides à effectuer. 
+   Ici \theta correspond à la proportion de données dans chacune des
+   gaussiennes, et on exprime ensuite la présence de deux
+   distributions normales, avec \mu_1 et \sigma_1 puis \mu_2 et \sigma_2.
+   
 ** Amélioration de la précision de la simulations
    Comme mentionné précédemment, Stan peut évaluer des modèles très
    complexes, mais a souvent besoin d'aide et d'indication pour avoir
@@ -728,19 +732,25 @@ l'on ajoute des points au cluster.
    modèles autant que possible, en écrivant les priors sous forme
    vectorielle et en évitant les boucles, pour limiter le temps
    d'exécution. Il y a également des techniques d'écriture, comme la
-   décomposition QR de matrices, telle que la matrice réelle $A=Q*R$
-   avec Q une matrice orthogonale et R une matrice triangulaire
-   supérieure. Cette décomposition permet de réduire la corrélation
+   décomposition QR de matrices qui permet de réduire la corrélation
    entre les paramètres utilisés pour calculer le postérieur et réduit
    le temps de simulation sans impacter négativement les résultats.
 
-   De plus, dès que l'on utilise des données de taille très petite (de
-   l'ordre de 10^-5 à 10^-12), il faut écrire les modèles sous la forme
-   de paramétrisation non centrée, car nos données ne sont pas assez
-   informatives. Cette forme se caractérise par l'introduction de
-   nouveaux paramètres, qui correspondent à des variables gaussiennes
-   centrées en zéro. Ces variables permettent au sampler de trouver
-   plus facilement les autres paramètres.
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{./images/QR.png}
+\caption[Exemple de décomposition QR]{Exemple de décomposition QR\footnotemark}
+\end{figure}
+\footnotetext{source de l'image: https://dsc-spidal.github.io/harp/img/harpdaal/QR.png}
+
+   De plus, dès que l'on travaille sur des valeurs de taille très
+   petite (de l'ordre de $10^{-5}$ à $10^{-12}$), il faut écrire les modèles
+   sous la forme de paramétrisation non centrée, car nos données ne
+   sont pas assez informatives. Cette forme se caractérise par
+   l'introduction de nouveaux paramètres, qui correspondent à des
+   variables gaussiennes centrées en zéro (voir figure 5.2). Ces
+   variables permettent au sampler de trouver plus facilement les
+   autres paramètres.
 
 \begin{figure}[h]
 \centering
@@ -753,13 +763,14 @@ l'on ajoute des points au cluster.
    d'améliorer la convergence des chaînes en leur indiquant plus
    précisément une direction à suivre, ce qui évite donc qu'elles
    fassent des tirages dans une zone trop large et finissent donc avec
-   des résultats peu précis. Plus le modèle est complexe, plus il est
-   préférable de donner des priors informatifs, soit assez proche des
-   valeurs des paramètres, car sans le sampler arrivera à converger
-   mais aura des résultats erronés. De plus, l'utilisation de priors
-   informatifs permet de réduire le temps de calcul de la simulation,
-   puisque celle ci passe moins de temps à chercher la bonne zone où
-   faire les tirages. 
+   des résultats peu précis. Plus le modèle est complexe et les
+   données précises et petites, plus il est préférable de donner des
+   priors informatifs, soit assez proche des valeurs des paramètres,
+   car sans cela le sampler arrivera à converger mais aura des
+   résultats erronés autour de l'entier le plus proche. De plus,
+   l'utilisation de priors informatifs permet de réduire le temps de
+   calcul de la simulation, puisque celle ci passe moins de temps à
+   chercher la bonne zone où faire les tirages. 
 
    Cependant un compromis existe entre priors trop peu informatifs et
    trop informatifs, à savoir qu'un prior peu informatif serait par
@@ -825,15 +836,22 @@ faudrait réécrire notre modèle.
 \end{figure}
 
 On peut également dessiner les graphiques nous mêmes, à partir des
-distributions des paramètres trouvées par stan. Par exemple dans
-l'image ci dessous, nous avons dessiné la distribution d'alpha selon
-gamma, et ce pour chacun de nos 64 hôtes, avec une grande ellipse
-contenant 95% des distributions. 
+distributions des paramètres $\overline {\alpha_i}$ et $\overline{\theta_i}$ trouvées par stan. Par exemple dans
+l'image ci dessous, nous avons dessiné la répartition de \alpha selon
+\theta, et ce pour chacun de nos 64 hôtes, avec une grande ellipse
+contenant 95% des points. 
 
 \begin{figure}[!h]
 \includegraphics[width=\textwidth]{./images/alpha_on_theta_lm.png}
-\caption{distribution du paramètre alpha selon theta}
+\caption{répartition du paramètre alpha selon theta}
 \end{figure}
+
+Cette image nous fait remarquer que les paramètres \alpha et \theta sont
+relativement indépendants, et qu'on peut avoir une distribution
+différente pour chacun sans induire notre modèle en erreur. Par
+exemple nous avions déjà observé que modéliser \theta_i par une loi normale
+semblait raisonnable, mais que ce n'était pas le cas pour \alpha_i, qui
+devrait plutôt être modélisé par une mixture de loi normales.
 
 Enfin le meilleur moyen de vérifier la précision du modèle après tous
 ces tests est de générer de nouvelles données à partir des prédictions
@@ -841,14 +859,45 @@ des paramètres. Si notre modèle est précis, les données générées
 devraient à peu près couvrir les données initiales, et ne pas avoir
 trop de tirages où il n'y avait pas de données initiales. Stan permet
 la génération de nouvelles données à partir des paramètres estimés,
-mais on peut également le faire directement en R. L'image ci dessous
-montre une génération de données confirmant la précision du modèle.
+mais on peut également le faire directement en R. L'image 5.5 ci
+dessous montre une génération de données confirmant la précision du
+modèle.
 
 \begin{figure}[!h]
 \includegraphics[width=\textwidth]{./images/generated_quantities_dgemm_m-2_second_test.png}
 \caption{Génération de nouvelles données, modèle polynomial}
 \end{figure}
 
+** Résultats des expériences
+Ce modèle n'est pas conclusif: l'expression d'une mixture de
+   gaussiennes fonctionne relativement bien sur des données générées,
+   lorsque cela concerne le résultat, mais lorsqu'on veut l'appliquer
+   à un paramètre du modèle hiérarchique la simulation a besoin de
+   priors extrêmement précis, et les résultats obtenus ne reflètent
+   que les valeurs de ces priors. 
+
+   J'ai comparé la performance et les résultats de ce modèle avec ceux
+   d'une simple régression linéaire et d'un outil de clustering comme
+   kmeans ou mclust. Pour cela, on a décidé de ne pas prendre en
+   compte les paramètres beta et delta: en effet ils ont tous les deux
+   une influence assez faible avec le postérieur, et ne sont pas
+   corrélés à d'autres paramètres comme le sont alpha et gamma. Ainsi,
+   on a effectué une simple régression type $lm(duration \sim mnk+0)$,
+   puis on a récupéré la moyenne et l'écart type du paramètre gamma;
+   ainsi que l'écart type de alpha (on assume qu'il est à peu près
+   similaire pour les deux moyennes). 
+
+   On a ensuite utilisé un outil de clustering pour regrouper les
+   estimations de alpha en deux clusters; puis récupéré les deux
+   moyennes de alpha et la fréquence des points pour chaque
+   cluster. Ces opérations ont été très rapides, et nous ont donc
+   permis d'avoir les estimations des paramètres d'un modèle
+   hiérarchique (mais pas leur distribution, on ignore l'incertitude
+   qu'on a sur ces estimations). De plus ces estimations ne prenaient
+   pas en compte le fait que le bruit n'est pas linéaire. Malgré
+   tout, les estimations par régression linéaire du modèle
+   hiérarchique étaient toutes aussi précises que celles de Stan, tout
+   en étant beaucoup plus rapides à effectuer. 
 * Conclusion
 ** Sur Stan
 Lors de ce stage, j'ai donc évaluer la viabilité de l'utilisation d'un
