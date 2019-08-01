@@ -35,6 +35,10 @@
 #+LATEX_HEADER: \titlespacing*{\subparagraph}{0pt}{1.25ex plus 1ex minus .2ex}{1em}
 #+LATEX_HEADER: \def\usetheme#1{} 
 #+LATEX_HEADER: \renewcommand\maketitle{}%\pagestyle{empty}\begin{titlepage}\input{title}\end{titlepage}\cleardoublepage\pagestyle{fancy}}
+#+LaTeX: \let\refold=\ref
+#+LaTeX: \def\ref#1{~\refold{#1}}
+#+LaTeX: \let\eqrefold=\eqref
+#+LaTeX: \def\eqref#1{~\eqrefold{#1}}
 
 #+BEGIN_EXPORT latex
 \newcommand{\Norm}{\ensuremath{\mathcal{N}}\xspace}
@@ -155,6 +159,7 @@ Annexe
     Grâce aux compétences diverses des chercheurs travaillant dans le
     bâtiment, l'IMAG permet de profiter d'un grand nombre de
     séminaires et de conférences sur des sujets très variés. 
+
 ** Développement durable
    Le bâtiment IMAG est considéré comme un bâtiment "intelligent" au
    vu de sa faible consommation d'énergie. En effet, le bâtiment
@@ -211,15 +216,13 @@ Annexe
    conclusions.
 
    En outre, cette complexité d'architecture impose aux applications
-   parallèles d'utiliser des technologies comme MPI (Message Passing
-   Interface) pour communiquer entre les différents noeuds d'un
-   superordinateur, point à point ou de manière collective, afin que chaque
-   processus puisse effectuer une partie d'un grand calcul. MPI a donc
-   aidé aux développement de superordinateurs de plus en plus
-   puissants, ce qui a conduit à l'établissement du TOP500 des
-   machines les plus performantes. Ce classement est basé sur les
-   résultats du benchmark HPL, calculant la décomposition LU d'une
-   matrice dense de grande taille et utilisant MPI. 
+   parallèles d'utiliser des technologies Message Passing Interface
+   (MPI) pour communiquer entre les différents noeuds d'un
+   superordinateur, point à point ou de manière collective, afin que
+   chaque processus puisse effectuer une partie d'un grand calcul. MPI
+   a donc aidé aux développement de superordinateurs de plus en plus
+   puissants, ce qui a conduit à l'établissement du TOP500 des 
+   machines les plus performantes.
 
    L'objectif de mon stage a été de contribuer aux techniques de
    modélisation et d'évaluation de performances d'applications
@@ -227,6 +230,15 @@ Annexe
    l'aide de simulations avec SimGrid, un simulateur doté de plusieurs
    outils comme SMPI, une ré-implémentation de MPI sur SimGrid. 
 ** TODO Travaux de Tom: prédictions d'applications MPI
+abstract du papier 2.1 2.2
+difficilr prévoir perf
+optimiser perf avec techniques
+donc les gens exécutent du code pour savoir si ça tourne bieb d'où
+simulation
+smpi pour exécuter l'appli sur ton ordi mais pour simuler mieu vaut
+remplacer les grosses fonctions par des modèles
+dans le papier: utiliesr smpi pour perf hpl
+noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
 ** Type de mesures et de modèles
    Les mesures récupérées pour modéliser ces systèmes sont issues
    d'expériences spécifiques et contrôlées mais peuvent néanmoins être
@@ -304,7 +316,7 @@ Annexe
    la présence d'un bruit non linéaire ou le besoin de séparer les
    estimations selon les CPUs utilisés. 
 * État de l'Art
-** L'approche Bayésienne
+** La maximisation de la vraisemblance via l'approche Bayésienne
    L'approche Bayésienne des statistiques interprète les probabilités
    comme une mesure d'incertitude, et les résultats comme des
    estimations. L'analyse Bayésienne n'a pas pour but de trouver un
@@ -346,8 +358,6 @@ Annexe
    ne devraient pas impacter négativement les résultats, ils n'auront
    juste aucune utilité. 
 
-(slides arnaud 2,4,8/46)
-
 + L'estimateur du maximum de vraisemblance est un algorithme permettant
 d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
 échantillon. L est la fonction de densité à paramètres \theta correspondant
@@ -368,7 +378,7 @@ permettant d'atteindre le maximum de la vraisemblance L.
    on veut pouvoir renseigner des priors et quantifier notre
    incertitude par rapport aux résultats. 
  
-** L'approche Machine Learning et maximisation de la vraisemblance
+** L'approche Machine Learning
 L'approche machine learning suit un principe d'auto-apprentissage:
 contrairement à l'approche bayésienne qui fait correspondre les
 données à un modèle avec des hypothèses à vérifier pour trouver les
@@ -403,7 +413,6 @@ du pas d'apprentissage \eta; et ceci jusqu'à converger en un minimum.
 \end{center}
 \end{figure}
 \footnotetext{source de l'image: https://www.neural-networks.io/fr/single-layer/gradient-descent.php}
-
 
 Attention à taille de \eta: plus il est grand plus on avance loin à
 chaque pas donc plus on réduit théoriquement les itérations, mais si \eta
@@ -456,11 +465,12 @@ aucune mesure d'incertitude.
    résultats significatifs).
 
 \begin{figure}[h]
+\label{trace_rapport}
 \includegraphics[width=\textwidth]{./images/trace_rapport.png}
 \caption{trace du paramètre coefficient}
 \end{figure}
 
-   La figure 3.3 illustre la convergence de 8 chaînes indépendantes
+   La figure \ref{trace_rapport} illustre la convergence de 8 chaînes indépendantes
    autour de la même zone: environ la valeur 3,8.
 
    Stan a une syntaxe sous forme de sections, ou bloc. Chacun des
@@ -512,9 +522,10 @@ aucune mesure d'incertitude.
    des valeurs trouvées, les valeurs initiales utilisées, etc. Il
    existe par ailleurs un package appelé shinystan offrant une
    interface graphique très détaillée aux outils de diagnostics. On en
-   voit une partie dans l'image ci dessous.
+   voit une partie dans l'image \ref{shinystan}.
 
 \begin{figure}[h]
+\label{shinystan}
 \includegraphics[width=\textwidth]{./images/shinystan.png}
 \caption{L'interface de shinystan, avec l'affichage du log postérieur et des trajectoires divergentes en rouge}
 \end{figure}
@@ -553,15 +564,16 @@ aucune mesure d'incertitude.
     - Si oui on fait un tirage sur ce nouveau point
 
 \begin{figure}[h]
+\label{gibbs}
 \includegraphics[width=\textwidth]{./images/gibbs_sampling.png}
 \caption[Exemple de l'algorithme de sampling Gibbs]{Exemple de l'algorithme de sampling Gibbs\footnotemark}
 \end{figure}
 \footnotetext{source de l'image: https://jessicastringham.net/2018/05/09/gibbs-sampling/}
 
-   On peut reconnaître cet algorithme dans l'image du milieu, où on
-   comprend que la simulation a commencé à peu près au point (3,-3) et
-   s'est ensuite rapprochée au fur et à mesure de la zone où il y
-   avait les données.
+   On peut reconnaître cet algorithme dans l'image du milieu de la
+   figure \ref{gibbs}, où on comprend que la simulation a commencé à
+   peu près au point (3,-3) et s'est ensuite rapprochée au fur et à
+   mesure de la zone où il y avait les données.
 * Méthodologie
    Une des problématiques auxquelles mon stage, comme tous les stages
    de recherche, devait répondre est la reproductibilité: en effet
@@ -620,19 +632,19 @@ aucune mesure d'incertitude.
 * Contributions
 ** Elaboration de modèles
    Comme le but du stage était de comparer l'échantillonnage Bayésien
-   à la maximisation de vraisemblance, j'ai commencé par faire un
-   modèle simple des données avec une régression linéaire. Je me suis
-   rapidement aperçu que la régression linéaire avait deux
-   inconvénients dans notre cas: comme elle ne permet pas de modéliser
-   le bruit, il était difficile de lui indiquer une distribution du
-   bruit qui ne serait pas linéaire. De plus, le paramètre du modèle
-   qui est indépendant de x, l'intercept, avait tendance à avoir des
-   valeurs étranges car il n'était pas significatif dans la génération
-   des données. Le problème est qu'il introduisait donc un biais dans
-   l'estimation de nouvelles données à partir des paramètres
-   trouvés. Ce modèle n'était donc pas idéal, et le but était de
-   pouvoir l'écrire plus proprement, et d'avoir des résultats plus
-   significatifs avec Stan. 
+   à l'approche machine learning, j'ai commencé par faire un
+   modèle linéaire simple des données, suivant la forme $y=a*x+b$,
+   avec une régression linéaire. Je me suis rapidement aperçu que la
+   régression linéaire avait deux inconvénients dans notre cas: comme
+   elle ne permet pas de modéliser le bruit, il était difficile de lui
+   indiquer une distribution du bruit qui ne serait pas linéaire. De
+   plus, le paramètre du modèle qui est indépendant de x, dans ce cas
+   b, avait tendance à avoir des valeurs étranges car il n'était pas
+   significatif dans la génération des données. Le problème est qu'il
+   introduisait donc un biais dans l'estimation de nouvelles données à
+   partir des paramètres trouvés. Ce modèle n'était donc pas idéal, et
+   le but était de pouvoir l'écrire plus proprement, et d'avoir des
+   résultats plus significatifs avec Stan. 
 
    Avant de réaliser des modèles sur les données des noyaux de calcul,
    j'ai travaillé avec des données synthétiques, pour me familiariser
@@ -648,25 +660,56 @@ aucune mesure d'incertitude.
    OpenBlas fournies par mes encadrants: plus précisément sur la durée
    d'exécution de cette fonction en fonction de la taille de la
    matrice (déterminée par les paramètres M,N et K). J'ai commencé par
-   écrire un modèle linéaire avec du bruit polynomial (M-1 N-2): celui
-   ci contenait deux paramètres constants \beta et \delta et deux paramètres
-   dépendant de M*N*K: \alpha et \gamma. La figure 5.1 illustre ce
-   modèle. J'ai ensuite écrit un modèle polynomial avec le même bruit
-   (M-2 N-2), puis j'ai ajouté de la complexité à ces modèles par
-   couche.  
+   écrire un \textbf{modèle linéaire avec du bruit polynomial} (M-1
+   N-2): celui ci contenait deux paramètres constants \beta et \gamma et deux
+   paramètres dépendant de MNK: \alpha et \theta. 
 
+\begin{equation} duration \sim \Norm(\alpha \cdot mnk + \beta, \theta \cdot mnk + \gamma) \end{equation}
+
+#+BEGIN_EXPORT latex
 \begin{figure}[h]
 \begin{center}
-\includegraphics[width=400px]{./images/modele_lineaire.png}
-\caption{modèle linéaire, bruit polynomial}
+% \includegraphics[width=400px]{./images/modele_lineaire.png}
+\begin{boxedminipage}{.9\linewidth}
+\begin{verbatim}
+data {
+  int<lower = 0> N; //nombre de données
+  vector[N] mnk; //taille de la matrice
+  vector[N] duration; //durée d'exécution
+}
+
+parameters {
+  real alpha;
+  real beta;
+  real<lower=0> theta; //contrainte positive sur le bruit
+  real<lower=0> gamma;
+}
+
+model {
+  //priors sur les paramètres
+  alpha ~ normal(6e-11,6e-12);
+  beta ~ normal(7e-07,7e-08);
+  theta ~ normal(1e-12,1e-13);
+  gamma ~ normal(7e-07,7e-08);
+
+  //likelihood
+  duration ~ normal(alpha*mnk+beta, theta*mnk+gamma);
+}
+\end{verbatim}
+\end{boxedminipage}
+\caption{Modèle linéaire, bruit polynomial.\label{fig:stan-M1-N1}}
 \end{center}
 \end{figure}
+#+END_EXPORT
 
-   Le modèle polynomial est très similaire, la principale différence
-   étant l'inclusion de plus de paramètres. En effet, cette fois ci on
-   considère l'influence des coefficients M*N, M*K et N*K. Le modèle
-   est donc légèrement modifié:  
-   \begin{equation} duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \gamma_1 \cdot mnk + \gamma_2 \cdot mn + \gamma_3 \cdot mk + \gamma_4 \cdot nk + \delta) \end{equation}
+   La figure \ref{fig:stan-M1-N1} illustre ce modèle. 
+
+   J'ai ensuite écrit un \textbf{modèle polynomial avec du bruit polynomial} (M-2 N-2), puis j'ai ajouté de la complexité à ces
+   modèles par couche. Le modèle polynomial est très similaire au
+   modèle linéaire, la principale différence étant l'inclusion de plus de
+   paramètres. En effet, cette fois ci on considère l'influence des
+   coefficients M*N, M*K et N*K. Le modèle est donc légèrement modifié:  
+   \begin{equation} duration \sim \Norm(\alpha_1 \cdot mnk + \alpha_2 \cdot mn + \alpha_3 \cdot mk + \alpha_4 \cdot nk + \beta, \theta_1 \cdot mnk + \theta_2 \cdot mn + \theta_3 \cdot mk + \theta_4 \cdot nk + \gamma) \end{equation}
 
    Par la suite, j'ai réécrit ces deux modèles en ajoutant une autre
    variable déterminante sur laquelle les estimations des paramètres
@@ -675,22 +718,51 @@ aucune mesure d'incertitude.
    précédents ont donc été adaptés pour estimer les paramètres pour les
    64 hôtes différents. La principale différence de ces modèles était
    que la likelihood devait donc être définie selon les hôtes. On
-   avait donc la formule suivante pour le modèle linéaire: 
+   avait donc la formule suivante pour le \textbf{modèle linéaire avec estimations par hôte}: 
 
-   \begin{equation} duration_i \sim \Norm(\alpha_i*mnk+\beta_i, \gamma_i*mnk+\delta_i) \end{equation}
+   \begin{equation} duration_i \sim \Norm(\alpha_i*mnk+\beta_i, \theta_i*mnk+\gamma_i) \end{equation}
 
-   Et de même pour le modèle polynomial. Ces deux modèles permettent
-   de simuler à peu près la performance des noyaux de calculs utilisés
-   dans HPL.
+   Et de même pour le \textbf{modèle polynomial avec estimations par hôte}. 
+
+   \begin{equation} duration_i \sim \Norm(\alpha_{i_1} \cdot mnk + \alpha_{i_2} \cdot mn + \alpha_{i_3} \cdot mk + \alpha_{i_4} \cdot nk + \beta_i,  \theta_{i_1} \cdot mnk + \theta_{i_2} \cdot mn + \theta_{i_3} \cdot mk + \theta_{i_4} \cdot nk + \gamma_i) \end{equation}
+
+   Ces deux derniers modèles permettent de simuler à peu près la performance
+   des noyaux de calculs utilisés dans HPL.
 
    Cependant, on pourrait estimer qu'il est possible d'avoir une
    distribution de probabilité de valeurs moyennes des paramètres,
    rendant compte de la variabilité spatiale et à partir de laquelle
    on tirerait des valeurs pour les paramètres à chaque fois. On
-   estimerait alors la formule suivante comme modèle le plus simple
-   (et de même pour les autres paramètres):
+   estimerait alors les formules \eqref{eq:hierarchical} pour utiliser
+   un \textbf{modèle hiérarchique linéaire}:
    
-   \begin{equation} \alpha_i \sim \Norm(\mu_\alpha,\sigma_a) \end{equation}
+#+BEGIN_EXPORT latex
+\begin{equation}
+  \label{eq:hierarchical}
+   \begin{cases}
+     \alpha_i \sim \Norm(\mu_\alpha,\sigma_\alpha) \\
+     \beta_i \sim \Norm(\mu_\beta,\sigma_\beta) \\
+     \theta_i \sim \Norm(\mu_\theta,\sigma_\theta) \\
+     \gamma_i \sim \Norm(\mu_\gamma,\sigma_\gamma) \\
+   \end{cases}
+\end{equation}
+#+END_EXPORT
+   
+   Et les formules suivantes \ref{eq:hierarchical_polynomial} pour un \textbf{modèle hiérarchique polynomial},
+   où n serait compris entre 1 et 4 et $\alpha^n$ correspondrait alors aux
+   coefficients de mnk, mn, mk et nk.
+
+   #+BEGIN_EXPORT latex
+   \begin{equation}
+     \label{eq:hierarchical_polynomial}
+      \begin{cases}
+     \alpha_{i_n} \sim \Norm(\mu_{\alpha_n},\sigma_{\alpha_n}) \\
+     \beta_i \sim \Norm(\mu_\beta,\sigma_\beta) \\
+     \theta_{i_n} \sim \Norm(\mu_{\theta_n},\sigma_{\theta_n}) \\
+     \gamma_i \sim \Norm(\mu_\gamma,\sigma_\gamma) \\
+   \end{cases}
+\end{equation}
+#+END_EXPORT
 
    Sachant que le cluster sur lequel on fait nos estimations, Dahu,
    n'est pas vraiment homogène donc cette hypothèse n'est pas très
@@ -699,7 +771,7 @@ aucune mesure d'incertitude.
    On chercherait alors à estimer principalement les valeurs des deux
    paramètres supplémentaires, qu'on appellera hyperparamètres, car
    une fois qu'on aura leur distribution de probabilité, on pourrait
-   calculer des nouvelles valeurs \alpha, \beta, \gamma et \delta pour un nouveau CPU.
+   calculer des nouvelles valeurs \alpha, \beta, \theta et \gamma pour un nouveau CPU.
 
    Le modèle hiérarchique a donné des bonnes estimations pour le
    modèle linéaire, mais des estimations assez moyennes avec le modèle
@@ -708,22 +780,6 @@ aucune mesure d'incertitude.
    permet d'écrire clairement des modèles assez complexes, mais a
    parfois du mal à les évaluer si on ne lui donne pas beaucoup
    d'indications.
-
-   Enfin, après avoir remarqué sur les histogrammes des paramètres que
-   \alpha ne ressemblait pas à une distribution normale mais plus à une
-   mixture de distributions normales, j'ai écrit un modèle incluant
-   cette contrainte. Ce dernier modèle diffère un peu plus des
-   précédents en raison de la syntaxe nécessaire pour indiquer qu'un
-   paramètre est une mixture de gaussiennes. En effet, pour écrire une
-   likelihood correspondant à une mixture de deux gaussiennes, la
-   syntaxe est la suivante: 
-
-   \begin{equation} target = target + log_{mix}(\theta, normal_{lpdf}(y_n | \mu_1, \sigma_1),
-   normal_{lpdf}(y_n | \mu_2, \sigma_2)) \end{equation}
-
-   Ici \theta correspond à la proportion de données dans chacune des
-   gaussiennes, et on exprime ensuite la présence de deux
-   distributions normales, avec \mu_1 et \sigma_1 puis \mu_2 et \sigma_2.
    
 ** Amélioration de la précision de la simulations
    Comme mentionné précédemment, Stan peut évaluer des modèles très
@@ -731,32 +787,65 @@ aucune mesure d'incertitude.
    des résultats précis. Tout d'abord il faut optimiser l'écriture des
    modèles autant que possible, en écrivant les priors sous forme
    vectorielle et en évitant les boucles, pour limiter le temps
-   d'exécution. Il y a également des techniques d'écriture, comme la
-   décomposition QR de matrices qui permet de réduire la corrélation
-   entre les paramètres utilisés pour calculer le postérieur et réduit
-   le temps de simulation sans impacter négativement les résultats.
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{./images/QR.png}
-\caption[Exemple de décomposition QR]{Exemple de décomposition QR\footnotemark}
-\end{figure}
-\footnotetext{source de l'image: https://dsc-spidal.github.io/harp/img/harpdaal/QR.png}
+   d'exécution. 
 
    De plus, dès que l'on travaille sur des valeurs de taille très
    petite (de l'ordre de $10^{-5}$ à $10^{-12}$), il faut écrire les modèles
    sous la forme de paramétrisation non centrée, car nos données ne
    sont pas assez informatives. Cette forme se caractérise par
    l'introduction de nouveaux paramètres, qui correspondent à des
-   variables gaussiennes centrées en zéro (voir figure 5.2). Ces
-   variables permettent au sampler de trouver plus facilement les
-   autres paramètres.
+   variables gaussiennes centrées en zéro. On donne ensuite les priors
+   de nos paramètres dans le bloc "transformed parameters" en
+   additionnant la moyenne avec le produit d'un des paramètres
+   supplémentaire et de l'écart type (au lieu de l'écrire sous la
+   forme d'une distribution normale). Ce type d'écriture permet au
+   sampler de pouvoir trouver plus facilement les paramètres
+   recherchés. Un exemple de modèle est donné dans la figure \ref{fig:non_centered}.
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{./images/parametrisation_non_centree.png}
-\caption{modèle linéaire avec paramétrisation non centrée}
+#+BEGIN_EXPORT latex
+\begin{figure}[!h]
+\begin{center}
+% \includegraphics[width=400px]{./images/parametrisation_non_centree.png}
+\begin{boxedminipage}{.9\linewidth}
+\begin{verbatim}
+data {
+  int<lower = 0> N; //nombre de données
+  vector[N] mnk; //taille de la matrice
+  vector[N] duration; //durée d'exécution
+}
+
+parameters {
+  //paramètres supplémentaires
+  real alpha_raw;
+  real beta_raw;
+  real<lower=0> theta_raw; //contrainte positive sur le bruit
+  real<lower=0> gamma_raw;
+}
+
+transformed parameters {
+  //priors sur les paramètres
+  real alpha = 6e-11 + alpha_raw * 6e-12;
+  real beta = 7e-07 + beta_raw * 7e-08;
+  real theta = 1e-12 + theta_raw * 1e-13;
+  real gamma_raw = 7e-07 + gamma_raw * 7e-08;
+}
+
+model {
+  //priors sur les paramètres supplémentaires
+  alpha_raw ~ normal(0,1);
+  beta_raw ~ normal(0,1);
+  theta_raw ~ normal(0,1);
+  gamma_raw ~ normal(0,1);
+
+  //likelihood
+  duration ~ normal(alpha*mnk+beta, theta*mnk+gamma);
+}
+\end{verbatim}
+\end{boxedminipage}
+\caption{modèle linéaire avec paramétrisation non centrée.\label{fig:non_centered}}
+\end{center}
 \end{figure}
+#+END_EXPORT
 
    Ensuite, une autre façon d'offrir des indications à Stan est de lui
    donner des priors précis. En effet, les priors permettent
@@ -787,17 +876,69 @@ aucune mesure d'incertitude.
    résultats; il faut donc être prudents quitte à donner des
    indications un peu moins précises. 
 
-   Enfin, une dernière indication possible à donner est les valeurs
-   initiales pour les chaînes. Cela permet en théorie d'améliorer leur
-   convergence et de trouver des résultats plus précis. En pratique,
-   lorsque l'on utilise des priors suffisamment informatifs la
-   précision des valeurs initiales permet simplement d'accélérer un
-   peu le temps d'exécution, et si on utilise des priors peu
-   informatifs les valeurs initiales remplacent un peu leur
-   rôle. Cependant le plus évident est de donner à peu près les mêmes
-   valeurs entre la moyenne pour le prior et la valeur initiale du
-   paramètre; et donc dans ce cas les valeurs initiales impactent
-   assez peu le postérieur.
+   Il est également possible de donner des valeurs initiales pour les
+   chaînes: cela permet en théorie d'améliorer leur convergence et de
+   trouver des résultats plus précis. En pratique, lorsque l'on
+   utilise des priors suffisamment informatifs, la précision apportée
+   par les valeurs initiales permet simplement d'accélérer un peu le
+   temps d'exécution, et si on utilise des priors peu informatifs les
+   valeurs initiales remplacent un peu leur rôle. Cependant le plus
+   évident est de donner à peu près les mêmes valeurs entre la moyenne
+   pour le prior et la valeur initiale du paramètre; et donc dans ce
+   cas les valeurs initiales impactent assez peu le postérieur.
+
+   Enfin, il existe des techniques d'écriture, comme la
+   décomposition QR de matrices (voir figure \ref{fig:QR_decomposition}), qui permet de réduire la corrélation
+   entre les paramètres utilisés pour calculer le postérieur et réduit
+   le temps de simulation sans impacter négativement les résultats.
+
+#+BEGIN_EXPORT latex
+\begin{figure}[!h]
+\begin{center}
+\begin{boxedminipage}{.9\linewidth}
+\begin{verbatim}
+data {
+  int<lower=0> N;
+  int<lower=1> M;
+  matrix[M, N] mnk;
+  vector[N] duration;
+}
+
+transformed data {
+  matrix[N, M] Q = qr_Q(mnk')[, 1:M] * N;
+  matrix[M, M] R = qr_R(mnk')[1:M, ] / N;
+  matrix[M, M] R_inv = inverse(R);
+}
+
+parameters {
+  vector[M] alpha_tilde;
+  real beta;
+  vector<lower=0>[M] theta_tilde;
+  real<lower=0> gamma;
+}
+
+transformed parameters {
+  vector[M] alpha = R_inv * alpha_tilde;
+  vector[M] theta = R_inv * theta_tilde;
+}
+
+model {
+  alpha ~ normal(6e-11,6e-12);
+  beta ~ normal(7e-07,7e-08);
+  theta ~ normal(1e-12,1e-13);
+  gamma ~ normal(7e-07,7e-08);;
+
+  for(i in 1:N){
+    duration[i] ~ normal(Q[i] * alpha_tilde[i] + beta, 
+    Q[i] * theta_tilde[i] + gamma);
+  }
+}
+\end{verbatim}
+\end{boxedminipage}
+\caption{décomposition QR.\label{fig:QR_decomposition}}
+\end{center}
+\end{figure}
+#+END_EXPORT
 ** Evaluation des modèles
 Une fois que l'on a obtenu les résultats et vérifié que la simulation
 s'est bien déroulée (convergence des chaînes, pas de trajectoires
@@ -821,7 +962,8 @@ grandes différences entre les résultats du modèle linéaire
 hiérarchique et du modèle polynomial hiérarchique. 
 
 De plus, il est possible de visualiser graphiquement le postérieur,
-pour voir si les résultats trouvés ont du sens. L'outil ggpairs,
+pour voir si les résultats trouvés ont du sens. L'outil ggpairs
+(exemple dans la figure \ref{fig:ggpairs}),
 fonctionnant en R avec ggplot, nous permet d'avoir sur un seul
 graphique l'histogramme des paramètres trouvés, mais également leur
 distribution par rapport aux autres paramètres, sous forme de nuage de
@@ -830,49 +972,82 @@ corrélations entre les paramètres qui pourraient poser problème au
 niveau de la simulation, et qui nous donnerait des indications qu'il
 faudrait réécrire notre modèle. 
 
+#+BEGIN_EXPORT latex
 \begin{figure}[!h]
 \includegraphics[width=\textwidth]{./images/ggpairs_mh1.png}
-\caption{Ggpairs avec modèle linéaire}
+\caption{Ggpairs avec modèle linéaire \label{fig:ggpairs}}
 \end{figure}
+#+END_EXPORT
 
 On peut également dessiner les graphiques nous mêmes, à partir des
-distributions des paramètres $\overline {\alpha_i}$ et $\overline{\theta_i}$ trouvées par stan. Par exemple dans
-l'image ci dessous, nous avons dessiné la répartition de \alpha selon
-\theta, et ce pour chacun de nos 64 hôtes, avec une grande ellipse
-contenant 95% des points. 
+distributions des paramètres $\overline {\alpha_i}$ et $\overline{\theta_i}$
+trouvées par stan. Par exemple dans l'image \ref{fig:alpha_theta}, nous avons
+dessiné la répartition de \alpha selon \theta, et ce pour chacun de nos 64
+hôtes, avec une grande ellipse contenant 95% des points. 
 
+#+BEGIN_EXPORT latex
 \begin{figure}[!h]
-\includegraphics[width=\textwidth]{./images/alpha_on_theta_lm.png}
-\caption{répartition du paramètre alpha selon theta}
+\begin{center}
+\includegraphics[width=350px]{./images/alpha_on_theta_lm.png}
+\caption{répartition du paramètre alpha selon theta \label{fig:alpha_theta}}
+\end{center}
 \end{figure}
+#+END_EXPORT
 
 Cette image nous fait remarquer que les paramètres \alpha et \theta sont
 relativement indépendants, et qu'on peut avoir une distribution
 différente pour chacun sans induire notre modèle en erreur. Par
-exemple nous avions déjà observé que modéliser \theta_i par une loi normale
-semblait raisonnable, mais que ce n'était pas le cas pour \alpha_i, qui
-devrait plutôt être modélisé par une mixture de loi normales.
+exemple nous avions observé dans les histogrammes des paramètres que
+modéliser \theta_i par une loi normale semblait raisonnable, mais que \alpha_i
+n'avait pas une forme typique de gaussienne, et qu'il serait
+probablement plus judicieux de le  modéliser par une mixture de loi
+normales. Il serait donc possible d'avoir un modèle avec des priors
+différents sur les deux paramètres dépendant de mnk. 
 
-Enfin le meilleur moyen de vérifier la précision du modèle après tous
-ces tests est de générer de nouvelles données à partir des prédictions
-des paramètres. Si notre modèle est précis, les données générées
-devraient à peu près couvrir les données initiales, et ne pas avoir
-trop de tirages où il n'y avait pas de données initiales. Stan permet
-la génération de nouvelles données à partir des paramètres estimés,
-mais on peut également le faire directement en R. L'image 5.5 ci
-dessous montre une génération de données confirmant la précision du
-modèle.
+J'ai donc écrit un \textbf{modèle linéaire hiérarchique avec \alpha
+modélisé par une mixture de lois normales}. Ce dernier modèle diffère
+un peu plus des précédents en raison de la syntaxe nécessaire pour
+indiquer qu'un paramètre est une mixture de gaussiennes. En effet,
+pour écrire une likelihood correspondant à une mixture de deux
+gaussiennes, la syntaxe est la suivante: 
 
+\begin{equation} target = target + log_{mix}(\delta, normal_{lpdf}(y_n | \mu_1, \sigma_1),
+   normal_{lpdf}(y_n | \mu_2, \sigma_2)) \end{equation}
+
+Ici \delta correspond à la proportion de données dans chacune des
+gaussiennes, et on exprime ensuite la présence de deux
+distributions normales, avec \mu_1 et \sigma_1 puis \mu_2 et \sigma_2.
+
+Enfin le meilleur moyen de vérifier la précision postérieure du modèle
+après tous ces tests est de générer de nouvelles données à partir des
+prédictions des paramètres. Si notre modèle est précis, les données
+générées devraient à peu près couvrir les données initiales, et ne pas
+avoir trop de tirages où il n'y avait pas de données initiales. Stan
+permet la génération de nouvelles données à partir des paramètres
+estimés, mais on peut également le faire directement en R. L'image
+\ref{fig:generation} montre une génération de données confirmant la
+précision du modèle.
+
+#+BEGIN_EXPORT latex
 \begin{figure}[!h]
-\includegraphics[width=\textwidth]{./images/generated_quantities_dgemm_m-2_second_test.png}
-\caption{Génération de nouvelles données, modèle polynomial}
+\begin{center}
+\includegraphics[width=400px]{./images/generated_quantities_dgemm_m-2_second_test.png}
+\caption{Génération de nouvelles données, modèle polynomial \label{fig:generation}}
+\end{center}
 \end{figure}
-
+#+END_EXPORT
 ** Résultats des expériences
-Ce modèle n'est pas conclusif: l'expression d'une mixture de
+Mes expériences avec les différents modèles ont montré que les modèles
+   avec estimations par hôte fonctionnaient bien avec nos données,
+   mais que les modèles hiérarchiques commençaient à être trop
+   complexes pour la quantité d'informations dont on disposaient: il
+   aurait fallu pouvoir donner plus de précision.
+
+De plus, le dernier modèle où \alpha était modélisé par une mixture de lois
+   normales n'est pas conclusif: l'expression d'une mixture de
    gaussiennes fonctionne relativement bien sur des données générées,
-   lorsque cela concerne le résultat, mais lorsqu'on veut l'appliquer
-   à un paramètre du modèle hiérarchique la simulation a besoin de
+   lorsqu'elle concerne la distribution du résultat, mais lorsqu'on
+   veut l'appliquer à un paramètre du modèle hiérarchique la simulation a besoin de
    priors extrêmement précis, et les résultats obtenus ne reflètent
    que les valeurs de ces priors. 
 
