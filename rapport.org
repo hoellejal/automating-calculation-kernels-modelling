@@ -1,5 +1,6 @@
 
 
+
 # -*- mode: org -*-
 # -*- coding: utf-8 -*-
 #+STARTUP: overview indent inlineimages logdrawer
@@ -229,26 +230,68 @@ Annexe
    parallèles sur des systèmes de haute performance, notamment à
    l'aide de simulations avec SimGrid, un simulateur doté de plusieurs
    outils comme SMPI, une ré-implémentation de MPI sur SimGrid. 
-** TODO Travaux de Tom: prédictions d'applications MPI
-abstract du papier 2.1 2.2
-difficilr prévoir perf
-optimiser perf avec techniques
-donc les gens exécutent du code pour savoir si ça tourne bieb d'où
-simulation
-smpi pour exécuter l'appli sur ton ordi mais pour simuler mieu vaut
-remplacer les grosses fonctions par des modèles
-dans le papier: utiliesr smpi pour perf hpl
-noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
+** Travaux de Tom: prédictions d'applications MPI
+Il est nécessaire d'optimiser le temps d'exécution des calculs à
+haute performance, considérant la complexité grandissantes de ces
+calculs et leur utilisation de plus en plus fréquente. Cependant, il
+est difficile de prévoir leurs performances en raison de la complexité
+du matériel utilisé pour exécuter ces calculs; et extrêmement coûteux
+de faire tourner des tests à grande échelle seulement pour améliorer
+les performances.la simulation est alors un outil très adapté pour ce
+challenge. En effet, la simulation permet à la fois d'exécuter du code
+afin de connaître à peu près le temps d'exécution de ces calculs à un
+coût moindre, mais également d'utiliser certaines techniques pour
+réduire ce temps, afin de pouvoir faire tourner de telles simulations
+sur des ordinateurs un peu moins complexes.
+
+SimGrid est un simulateur permettant l'exécution d'applications MPI,
+qui a été utilisé dans les recherches du papier scientifique
+\textit{Fast and Faithful Performance Prediction of MPI Applications: the HPL Case Study}
+\footnote{https://hal.inria.fr/hal-02096571/document} 
+(par simplicité nous réfèrerons à ce papier sous
+le nom de Cluster2019). Cet essai présente comment SimGrid et SMPI
+permettent une simulation très proche de la réalité, tout en étant
+plus rapide à exécuter que le programme simulé. Pour cela, les auteurs
+ont évité les éléments insignifiants des calculs, et ont remplacé les
+noyaux de calculs les plus utilisés par des modèles. De plus, SimGrid
+en lui même permet des améliorations car c'est lui qui dirige
+l'exécution et décide quel processus faire tourner à quel moment, et
+il offre des modèles de performances très proches de la réalité pour
+les applications dépendant de nombreuses communications réseaux. SMPI
+fait tourner le programme sur plusieurs threads et à chaque fois qu'un
+thread initie une communication avec un appel MPI, le simulateur
+avance son horloge au delà de la quantité de temps passée à faire des
+calculs depuis le dernier appel MPI.
+
+Cluster2019 prend l'exemple du benchmark High Performance Linpack
+(HPL), utilisé pour classer les superordinateurs du TOP500, pour
+montrer le résultat de leurs techniques de simulation. HPL mesure à
+quelle vitesse un ordinateur résout un système d'équations linéaires,
+et implémente la factorisation LU d'une matrice. Pour ces calculs, ce
+benchmark utilise les librairies BLAS, notamment pour toutes les
+opérations concernant les matrices comme la multiplication (en
+utilisant la fonction dgemm). La durée d'exécution de HPL est
+extrêmement difficile à déterminer sans simulation en raison du nombre
+de paramètres, du réseau, mais aussi des communications MPI qui
+peuvent induire une grande différence entre la performance maximale
+théorique et la performance réelle. De simples modèles de performances
+ne donneraient pas des résultats très précis.
+
+Des modèles précis ont donc été élaborés pour dgemm, le noyau de
+calcul le plus utilisé dans HPL. Comme le remplacement des calculs par
+un modèle rendaient certains résultats incorrect, les calculs
+utilisant ces résultats ont été omis. 
+
 ** Type de mesures et de modèles
    Les mesures récupérées pour modéliser ces systèmes sont issues
    d'expériences spécifiques et contrôlées mais peuvent néanmoins être
    biaisées en fonction de la température interne des machines, de
    divers effets de cache, de la rapidité d'un c\oe{}ur par rapport à
-   un autre, etc. De plus, les systèmes analysés ne sont pas toujours
-   ergodiques ou stationnaires; c'est à dire qu'une collection
-   d'échantillons aléatoires du système ne représentent pas forcément
-   ses propriétés statistiques, et que le système peut changer dans le
-   temps. 
+   un autre (variabilité spatiale), etc. De plus, les systèmes
+   analysés ne sont pas toujours ergodiques ou stationnaires; c'est à
+   dire qu'une collection d'échantillons aléatoires du système ne
+   représentent pas forcément ses propriétés statistiques, et que le
+   système peut changer dans le temps (variabilité temporelle). 
 
    Ces contraintes ont poussé mes encadrants à définir plusieurs types de
    modèles, selon le degré de compatibilité du système observé. On
@@ -317,6 +360,26 @@ noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
    estimations selon les CPUs utilisés. 
 * État de l'Art
 ** La maximisation de la vraisemblance via l'approche Bayésienne
+L'estimatimation de la maximisation de la vraisemblance permet de
+définir la vraisemblance d'un modèle selon les données fournies. Une
+fois celle ci obtenue, on peut chercher une valeur particulière de
+vraisemblance (approche machine learning) ou une distribution
+(approche bayésienne). L'algorithme d'estimation permet donc d'estimer la
+valeur ou la distribution des paramètres maximisant la vraisemblance L d'un
+échantillon. L est la fonction de densité à paramètres \theta correspondant
+à un échantillon de variables aléatoires discrètes. Soit:
+$L(\theta)=p(x1...xN | \theta)$ représentant la probabilité d'avoir les
+observations x1...xN étant donné les paramètres \theta. Les estimateurs
+$\widehat{\theta}$ du maximum de vraisemblance des paramètres \theta sont les valeurs
+maximisant L, soit minimisant la fonction de perte. L'objectif de
+l'algorithme est donc d'inférer les paramètres de la loi de
+probabilité d'un échantillon en trouvant les valeurs ou les
+distributions des paramètres \theta permettant d'atteindre le maximum de la
+vraisemblance L. L'estimateur p de la vraisemblance peut être
+représenté comme un graphique aux valeurs croissantes, ou sous forme
+-log(p) ce qui permet l'application d'algorithmes machine learning
+(voir la figure \ref{fig:gradient})
+
    L'approche Bayésienne des statistiques interprète les probabilités
    comme une mesure d'incertitude, et les résultats comme des
    estimations. L'analyse Bayésienne n'a pas pour but de trouver un
@@ -327,6 +390,15 @@ noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
    le plus probable, ce qui peut se faire avec des connaissances
    préalables qu'on appellera prior. 
 
+Si on considère que: 
+\begin{equation} y \sim \Norm(\mu \cdot x, \sigma) \end{equation}
+Ici \mu et \sigma sont les paramètres du modèle, y correspond au postérieur,
+soit la distribution de probabilité des paramètres, et x correspond à
+des données indépendantes. L'approche bayésienne permet donc de 
+trouver les paramètres d'un modèle grâce aux données observées, à
+valeur fixée (contrairement à la distribution des paramètres qui est
+plus variable).
+
    Le théorème de Bayes est le suivant, où A correspond à notre
    hypothèse et B à nos observations:
    \begin{equation} p(A|B)=\frac{p(B|A)*p(A)}{p(B)}  \end{equation}
@@ -335,7 +407,11 @@ noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
    fonction de notre connaissance de la probabilité de B sachant A et
    des probabilités de A et de B. On a donc une hypothèse dont on
    essaye de déterminer la probabilité selon les données qu'on possède
-   déjà et nos connaissances préalables qu'on appellera prior. 
+   déjà et notre prior. 
+
+Dans notre exemple précédent, le théorème de Bayes défini l'équation
+suivante: 
+\begin{equation}p(\mu,\sigma|y, x) ∝ p(y|\mu,\sigma, x) p(\mu,\sigma, x) \end{equation}
 
    On peut aussi écrire le théorème de la façon suivante, où la
    probabilité de A sachant B est le postérieur, la probabilité de B
@@ -358,18 +434,6 @@ noyau calcum dgemm avec tel prototype, complexité mnk/floprate machine m-0
    ne devraient pas impacter négativement les résultats, ils n'auront
    juste aucune utilité. 
 
-+ L'estimateur du maximum de vraisemblance est un algorithme permettant
-d'estimer la valeur des paramètres maximisant la vraisemblance L d'un
-échantillon. L est la fonction de densité à paramètres \theta correspondant
-à un échantillon de variables aléatoires discrètes. Soit:
-$L(\theta)=p(x1...xN | \theta)$ représentant la probabilité d'avoir les
-observations x1...xN étant donné les paramètres \theta. Les estimateurs
-$\widehat{\theta}$ du maximum de vraisemblance des paramètres \theta sont les valeurs
-maximisant L, soit minimisant la fonction de perte. L'objectif de
-l'algorithme est donc d'inférer les paramètres de la loi de
-probabilité d'un échantillon en trouvant les valeurs des paramètres \theta
-permettant d'atteindre le maximum de la vraisemblance L.
-
    L'approche d'inférence Bayésienne par échantillonage consiste donc
    à trouver une distribution correspondant aux paramètres en
    utilisant une méthode intuitive: on pars de nos connaissances
@@ -378,7 +442,7 @@ permettant d'atteindre le maximum de la vraisemblance L.
    on veut pouvoir renseigner des priors et quantifier notre
    incertitude par rapport aux résultats. 
  
-** L'approche Machine Learning
+** La maximisation de la vraisemblance via l'approche Machine Learning
 L'approche machine learning suit un principe d'auto-apprentissage:
 contrairement à l'approche bayésienne qui fait correspondre les
 données à un modèle avec des hypothèses à vérifier pour trouver les
@@ -409,7 +473,7 @@ du pas d'apprentissage \eta; et ceci jusqu'à converger en un minimum.
 \begin{figure}[h]
 \begin{center}
 \includegraphics[height=150px]{./images/descente_gradient.png}
-\caption[Exemple de descente de gradient]{Exemple de descente de gradient\footnotemark}
+\caption[Exemple de descente de gradient]{Exemple de descente de gradient \label{fig:gradient} \footnotemark}
 \end{center}
 \end{figure}
 \footnotetext{source de l'image: https://www.neural-networks.io/fr/single-layer/gradient-descent.php}
@@ -801,7 +865,7 @@ model {
    forme d'une distribution normale). Ce type d'écriture permet au
    sampler de pouvoir trouver plus facilement les paramètres
    recherchés. Un exemple de modèle est donné dans la figure \ref{fig:non_centered}.
-
+   
 #+BEGIN_EXPORT latex
 \begin{figure}[!h]
 \begin{center}
@@ -1158,8 +1222,7 @@ de la recherche comme potentielle poursuite professionnelle.
 
 * Dernière page :ignore:
 #+BEGIN_EXPORT latex
-\thispagestyle{empty}
-\begin{titlepage}
+\clearpage
   \includegraphics[height=1.4cm]{logos/Logo-UGA.pdf}\hfill
   \includegraphics[height=1.4cm]{logos/polytech.png}\hfill
   \includegraphics[height=1.4cm]{logos/LIG_coul.pdf}
@@ -1198,8 +1261,17 @@ Courriel: \textcolor{rouge}{olivier.richard@inria.fr}
       Bayésien}}}\medskip
   \end{center}
  \vfill
-Résumé: 
-\end{titlepage}
+\textbf{Résumé:} De nos jours, les superordinateurs de plus en plus utilisés et leurs performances sont en amélioration constante. Ceci augmente la complexité de leur conception et rend leur optimisation un véritable challenge.
+Afin de pouvoir améliorer leurs performances avec un moindre coût, des simulateurs ont été mis en place pour approximer les performances de programmes complexes, dont SimGrid. 
+Ces simulateurs permettent l'exécution de tels programmes sur des ordinateurs moins complexes.
+Le papier scientifique Cluster2019 montre comment utiliser SimGrid pour simuler l'exécution de HPL et obtenir des résultats proches de l'exécution, en utilisant diverses techniques de simulation. Par exemple, certains calculs sont remplacés par leur temps d'exécution approximatifs, et certains noyaux de calculs sont remplacés par des modèles prédéterminés.
+Nous comparerons donc l'approche utilisée dans Cluster2019 avec l'utilisation de modèles explicites écrits en Stan; afin de déterminer si l'approche bayésienne, permettant l'exploitation d'hypothèses ou de connaissances préalables, correspondrait plus à ces recherches.
+\medbreak 
+Nowadays, supercompupers are more and more employed and their performances are constantly improved. This increases the complexity of their hardware and turns their optimization into a challenge.
+To improve their performances with a lesser cost, simulators were created to approximate the performances of complex programs, such as SimGrid.
+These simulators make it possible to run such programs on less complex computers.
+The scientific report Cluster2019 shows how to use SimGrid to simulate a run of HPL within a few percents of a real run, by using various techniques. For example, some computations were replaced by their approximated time, and some computation kernels were raplced by predeterminated models. 
+Thus, we will compare the method used in Cluster2019 with the use of explicits models written in Stan, so to determine if the bayesian process that allows the operation of prior assumptions or knowledge, would work better with these researches.
 #+END_EXPORT
 
 * Emacs Setup 							   :noexport:
