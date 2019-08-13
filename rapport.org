@@ -209,7 +209,7 @@ Annexe
    superordinateurs contiennent des centaines de noeuds, chacun
    contenant plusieurs processeurs multi-c\oe{}urs; avec certains de
    ces processeurs possédant plusieurs niveau de cache, ou mettant en
-   \oe{}uvre du multi-threading… Ces architectures permettent une
+   \oe{}uvre du multi-threading... Ces architectures permettent une
    grande performance de calcul, mais induisent une certaine
    variabilité au niveau des durées de calculs et une incertitude sur
    la prédiction et de l'évaluation de performance. Il devient
@@ -230,14 +230,14 @@ Annexe
    parallèles sur des systèmes de haute performance, notamment à
    l'aide de simulations avec SimGrid, un simulateur doté de plusieurs
    outils comme SMPI, une ré-implémentation de MPI sur SimGrid. 
-** Travaux de Tom: prédictions d'applications MPI
+** Travaux de Tom CORNEBIZE: prédictions d'applications MPI
 Il est nécessaire d'optimiser le temps d'exécution des calculs à
-haute performance, considérant la complexité grandissantes de ces
+haute performance, considérant la complexité grandissante de ces
 calculs et leur utilisation de plus en plus fréquente. Cependant, il
 est difficile de prévoir leurs performances en raison de la complexité
 du matériel utilisé pour exécuter ces calculs; et extrêmement coûteux
 de faire tourner des tests à grande échelle seulement pour améliorer
-les performances.la simulation est alors un outil très adapté pour ce
+les performances. La simulation est alors un outil très adapté pour ce
 challenge. En effet, la simulation permet à la fois d'exécuter du code
 afin de connaître à peu près le temps d'exécution de ces calculs à un
 coût moindre, mais également d'utiliser certaines techniques pour
@@ -255,8 +255,8 @@ plus rapide à exécuter que le programme simulé. Pour cela, les auteurs
 ont évité les éléments insignifiants des calculs, et ont remplacé les
 noyaux de calculs les plus utilisés par des modèles. De plus, SimGrid
 en lui même permet des améliorations car c'est lui qui dirige
-l'exécution et décide quel processus faire tourner à quel moment, et
-il offre des modèles de performances très proches de la réalité pour
+l'exécution et décide quel processus faire tourner à quel moment. Par ailleurs,
+il offre des modèles de performance très proches de la réalité pour
 les applications dépendant de nombreuses communications réseaux. SMPI
 fait tourner le programme sur plusieurs threads et à chaque fois qu'un
 thread initie une communication avec un appel MPI, le simulateur
@@ -274,12 +274,12 @@ utilisant la fonction dgemm). La durée d'exécution de HPL est
 extrêmement difficile à déterminer sans simulation en raison du nombre
 de paramètres, du réseau, mais aussi des communications MPI qui
 peuvent induire une grande différence entre la performance maximale
-théorique et la performance réelle. De simples modèles de performances
+théorique et la performance réelle. De simples modèles de performance
 ne donneraient pas des résultats très précis.
 
 Des modèles précis ont donc été élaborés pour dgemm, le noyau de
 calcul le plus utilisé dans HPL. Comme le remplacement des calculs par
-un modèle rendaient certains résultats incorrect, les calculs
+un modèle rendait certains résultats incorrects, les calculs
 utilisant ces résultats ont été omis. 
 
 ** Type de mesures et de modèles
